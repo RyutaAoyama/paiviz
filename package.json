@@ -2,6 +2,8 @@
   "name": "paiviz",
   "private": true,
   "type": "module",
+  "volta": { "node": "20.11.1", "npm": "10.9.0" },
+  "engines": { "node": ">=20 <21" },
   "scripts": {
     "dev": "nuxt dev",
     "build": "nuxt build",
