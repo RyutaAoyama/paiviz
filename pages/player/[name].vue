@@ -5,24 +5,42 @@
     </h1>
 
     <div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
-      <KpiCard label="和了率" :value="'--%'" />
-      <KpiCard label="放銃率" :value="'--%'" />
-      <KpiCard label="立直率" :value="'--%'" />
-      <KpiCard label="副露率" :value="'--%'" />
-      <KpiCard label="平均順位" :value="'--'" />
+      <KpiCard
+        label="和了率"
+        :value="pct(kpi.agari)"
+        :tone="toneForKpi('agari', kpi.agari)"
+      />
+      <KpiCard
+        label="放銃率"
+        :value="pct(kpi.houju)"
+        :tone="toneForKpi('houju', kpi.houju)"
+      />
+      <KpiCard
+        label="立直率"
+        :value="pct(kpi.riichi)"
+        :tone="toneForKpi('riichi', kpi.riichi)"
+      />
+      <KpiCard
+        label="副露率"
+        :value="pct(kpi.furo)"
+        :tone="toneForKpi('furo', kpi.furo)"
+      />
+      <KpiCard
+        label="平均順位"
+        :value="kpi.avgRank.toFixed(2)"
+        :tone="toneForKpi('avgRank', kpi.avgRank)"
+      />
     </div>
 
     <AdSlot type="mid" />
 
-    <div class="rounded-2xl border border-[#242A33] bg-[#161A20] p-4">
-      <div class="mb-2 text-sm text-gray-400">Rate 推移（ダミーデータ）</div>
+    <div class="rounded-2xl border border-border bg-surface p-4">
+      <div class="mb-2 text-sm text-muted">Rate 推移（ダミーデータ + MA7）</div>
       <div style="height: 280px" ref="chartBox"></div>
     </div>
 
     <div>
-      <div class="mb-2 text-sm text-gray-400">
-        直近の対局（モック, ▶公式へ）
-      </div>
+      <div class="mb-2 text-sm text-muted">直近の対局（モック, ▶公式へ）</div>
       <MatchTableMock />
     </div>
   </section>
@@ -31,8 +49,22 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from "vue";
 import { useRoute } from "vue-router";
+// @ts-ignore: 型宣言が無いが、存在することを前提にインポート
+import { getLineOptions } from "~/utils/chartTheme";
+// @ts-ignore: 型宣言が無いが、存在することを前提にインポート
+import { pct, toneForKpi } from "~/utils/kpi";
 
 const route = useRoute();
+
+// --- dummy KPI for now (replace later with real) ---
+const kpi = {
+  agari: 0.24,
+  houju: 0.11,
+  riichi: 0.19,
+  furo: 0.31,
+  avgRank: 2.48,
+};
+
 let chart: any;
 const chartBox = ref<HTMLElement | null>(null);
 
@@ -42,12 +74,7 @@ onMounted(async () => {
     chart = echarts.init(chartBox.value);
     const x = Array.from({ length: 60 }).map((_, i) => i + 1);
     const y = x.map((i) => 1800 + Math.sin(i / 6) * 100 + Math.random() * 50);
-    chart.setOption({
-      grid: { left: 32, right: 16, top: 20, bottom: 24 },
-      xAxis: { type: "category", data: x, axisLabel: { color: "#9CA3AF" } },
-      yAxis: { type: "value", axisLabel: { color: "#9CA3AF" } },
-      series: [{ type: "line", data: y, showSymbol: false, smooth: true }],
-    });
+    chart.setOption(getLineOptions(y, x, { maWindow: 7, showMA: true }));
   }
 });
 onBeforeUnmount(() => {
