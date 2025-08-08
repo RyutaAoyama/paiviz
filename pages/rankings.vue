@@ -2,17 +2,19 @@
   <section class="space-y-4">
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-bold">ランキング</h1>
-      <div class="hidden sm:flex items-center gap-4 text-sm text-muted">
-        <div class="flex items-center gap-2">
-          密度:
-          <button
-            class="rounded-lg border border-border px-2 py-1 hover:text-text"
-            @click="toggleDense"
-          >
-            {{ dense ? "凝縮" : "快適" }}
-          </button>
-        </div>
-        <div class="text-xs">↑↓で移動 / Enterで詳細</div>
+      <div class="flex items-center gap-2 text-sm text-muted">
+        <button
+          class="rounded-lg border border-border px-2 py-1 hover:text-text"
+          @click="toggleDense"
+        >
+          密度: {{ dense ? "凝縮" : "快適" }}
+        </button>
+        <button
+          class="rounded-lg border border-border px-2 py-1 hover:text-text"
+          @click="copyLink"
+        >
+          共有リンクをコピー
+        </button>
       </div>
     </div>
 
@@ -89,22 +91,32 @@
         </div>
       </div>
     </div>
-    <div class="sm:hidden text-xs text-muted">
-      ヒント: ランキングをタップ後、キーボード↑↓/Enterでも操作できます
+    <div class="text-xs text-muted">
+      ヒント: URLクエリにフィルタ状態が保存されます。共有も簡単！
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
-import { navigateTo } from "nuxt/app";
 import { ref, computed, onMounted, watch } from "vue";
+import { load, save } from "~/utils/storage";
 
-const period = ref("this");
-const tableType = ref("特上");
-const rule = ref("東南");
-const sortKey = ref<"rate" | "games" | "win">("rate");
+const period = ref(load("rk.period", "this"));
+const tableType = ref(load("rk.tableType", "特上"));
+const rule = ref(load("rk.rule", "東南"));
+const sortKey = ref<"rate" | "games" | "win">(load("rk.sortKey", "rate"));
 
-const dense = ref(false);
+const dense = ref(load("rk.dense", false));
+watch(dense, (v) => save("rk.dense", v));
+
+useQuerySync({ period, tableType, rule, sortKey, dense } as any, [
+  "period",
+  "tableType",
+  "rule",
+  "sortKey",
+  "dense",
+]);
+
 const rowHeight = computed(() => (dense.value ? 40 : 48));
 
 const total = 1000;
@@ -115,12 +127,16 @@ const data = Array.from({ length: total }).map((_, i) => ({
   games: Math.floor(50 + Math.random() * 300),
   spark: Array.from({ length: 16 }, () => Math.floor(1 + Math.random() * 4)),
 }));
-const sorted = computed(() => [...data].sort((a, b) => b.rate - a.rate));
+const sorted = computed(() => {
+  const base = [...data];
+  if (sortKey.value === "rate") return base.sort((a, b) => b.rate - a.rate);
+  if (sortKey.value === "games") return base.sort((a, b) => b.games - a.games);
+  return base; // dummy
+});
 
 const viewport = ref<HTMLElement | null>(null);
 const startIndex = ref(0);
 const visibleCount = ref(0);
-
 const selected = ref(0);
 
 onMounted(() => {
@@ -136,12 +152,9 @@ function onScroll() {
   const st = viewport.value?.scrollTop ?? 0;
   startIndex.value = Math.max(0, Math.floor(st / rowHeight.value) - 1);
 }
-const visibleRows = computed(() => {
-  return sorted.value.slice(
-    startIndex.value,
-    startIndex.value + visibleCount.value
-  );
-});
+const visibleRows = computed(() =>
+  sorted.value.slice(startIndex.value, startIndex.value + visibleCount.value)
+);
 const totalHeight = computed(() => sorted.value.length * rowHeight.value);
 
 function toggleDense() {
@@ -177,5 +190,11 @@ function ensureVisible() {
 function goDetail(i: number) {
   const row = sorted.value[i];
   if (row) navigateTo(`/player/${encodeURIComponent(row.name)}`);
+}
+
+async function copyLink() {
+  try {
+    await navigator.clipboard.writeText(location.href);
+  } catch {}
 }
 </script>
