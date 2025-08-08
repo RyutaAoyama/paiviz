@@ -1,11 +1,22 @@
 <template>
   <section class="space-y-4">
-    <h1 class="text-2xl font-bold">ランキング</h1>
+    <div class="flex items-center justify-between">
+      <h1 class="text-2xl font-bold">ランキング</h1>
+      <div class="flex items-center gap-2 text-sm text-muted">
+        密度:
+        <button
+          class="rounded-lg border border-border px-2 py-1 hover:text-text"
+          @click="dense = !dense"
+        >
+          {{ dense ? "凝縮" : "快適" }}
+        </button>
+      </div>
+    </div>
 
     <div class="grid grid-cols-2 gap-2 md:grid-cols-4">
       <select
         v-model="period"
-        class="rounded-xl bg-[#161A20] px-3 py-2 ring-1 ring-[#242A33]"
+        class="rounded-xl bg-surface px-3 py-2 ring-1 ring-border"
       >
         <option value="this">今月</option>
         <option value="prev">先月</option>
@@ -13,7 +24,7 @@
       </select>
       <select
         v-model="tableType"
-        class="rounded-xl bg-[#161A20] px-3 py-2 ring-1 ring-[#242A33]"
+        class="rounded-xl bg-surface px-3 py-2 ring-1 ring-border"
       >
         <option>一般</option>
         <option>上</option>
@@ -22,14 +33,14 @@
       </select>
       <select
         v-model="rule"
-        class="rounded-xl bg-[#161A20] px-3 py-2 ring-1 ring-[#242A33]"
+        class="rounded-xl bg-surface px-3 py-2 ring-1 ring-border"
       >
         <option>東南</option>
         <option>東</option>
       </select>
       <select
         v-model="sortKey"
-        class="rounded-xl bg-[#161A20] px-3 py-2 ring-1 ring-[#242A33]"
+        class="rounded-xl bg-surface px-3 py-2 ring-1 ring-border"
       >
         <option value="rate">Rate</option>
         <option value="games">対局数</option>
@@ -39,8 +50,8 @@
 
     <div
       ref="viewport"
-      class="rounded-2xl border border-[#242A33] bg-[#161A20] text-sm"
-      style="height: 560px; overflow: auto"
+      class="rounded-2xl border border-border bg-surface text-sm"
+      :style="{ height: (dense ? 480 : 560) + 'px', overflow: 'auto' }"
       @scroll="onScroll"
     >
       <div
@@ -51,7 +62,7 @@
         <div
           v-for="(row, i) in visibleRows"
           :key="row.id"
-          class="grid grid-cols-[56px_1fr_90px_160px_90px] items-center gap-3 border-b border-[#242A33] hover:bg-[#11151b]"
+          class="grid grid-cols-[72px_1fr_90px_160px_90px] items-center gap-3 border-b border-border row-hover"
           :style="{
             position: 'absolute',
             top: (startIndex + i) * rowHeight + 'px',
@@ -61,11 +72,13 @@
             padding: '0 12px',
           }"
         >
-          <div class="tabular-nums text-gray-400">{{ startIndex + i + 1 }}</div>
+          <div class="tabular-nums text-muted">
+            <span class="pill">{{ startIndex + i + 1 }}</span>
+          </div>
           <div class="truncate">{{ row.name }}</div>
           <div class="tabular-nums">{{ row.rate }}</div>
-          <div class="text-teal-400"><Sparkline :data="row.spark" /></div>
-          <div class="tabular-nums text-gray-400">{{ row.games }}</div>
+          <div class="text-jade"><Sparkline :data="row.spark" /></div>
+          <div class="tabular-nums text-muted">{{ row.games }}</div>
         </div>
       </div>
     </div>
@@ -80,7 +93,9 @@ const tableType = ref("特上");
 const rule = ref("東南");
 const sortKey = ref<"rate" | "games" | "win">("rate");
 
-const rowHeight = 48;
+const dense = ref(false);
+const rowHeight = computed(() => (dense.value ? 40 : 48));
+
 const total = 1000;
 const data = Array.from({ length: total }).map((_, i) => ({
   id: i,
@@ -102,12 +117,12 @@ onMounted(() => {
 });
 
 function calcVisible() {
-  const h = viewport.value?.clientHeight ?? 560;
-  visibleCount.value = Math.ceil(h / rowHeight) + 2;
+  const h = viewport.value?.clientHeight ?? (dense.value ? 480 : 560);
+  visibleCount.value = Math.ceil(h / rowHeight.value) + 2;
 }
 function onScroll() {
   const st = viewport.value?.scrollTop ?? 0;
-  startIndex.value = Math.max(0, Math.floor(st / rowHeight) - 1);
+  startIndex.value = Math.max(0, Math.floor(st / rowHeight.value) - 1);
 }
 const visibleRows = computed(() => {
   return sorted.value.slice(
@@ -115,5 +130,5 @@ const visibleRows = computed(() => {
     startIndex.value + visibleCount.value
   );
 });
-const totalHeight = computed(() => sorted.value.length * rowHeight);
+const totalHeight = computed(() => sorted.value.length * rowHeight.value);
 </script>

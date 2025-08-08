@@ -1,0 +1,25 @@
+:root {
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur-quick: 120ms;
+  --dur-normal: 200ms;
+}
+
+* {
+  transition:
+    color var(--dur-quick) var(--ease),
+    background-color var(--dur-quick) var(--ease),
+    border-color var(--dur-quick) var(--ease),
+    box-shadow var(--dur-quick) var(--ease),
+    transform var(--dur-quick) var(--ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+/* Focus ring */
+.focus-ring:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--jade) 70%, transparent);
+  outline-offset: 2px;
+  border-radius: 12px;
+}
