@@ -20,7 +20,37 @@
             ESC
           </button>
         </div>
-        <div class="max-h-[50vh] overflow-auto">
+        <div class="max-h-[50vh] overflow-auto space-y-4">
+          <div v-if="favs.length" class="space-y-1">
+            <div class="mb-1 text-xs uppercase tracking-wider text-muted">
+              お気に入り
+            </div>
+            <ul class="flex flex-wrap gap-2">
+              <li v-for="n in favs" :key="'fav-' + n">
+                <button
+                  class="rounded-lg border border-border px-3 py-1 hover:bg-[#11151b]"
+                  @click="openPlayer(n)"
+                >
+                  {{ n }}
+                </button>
+              </li>
+            </ul>
+          </div>
+          <div v-if="recents.length" class="space-y-1">
+            <div class="mb-1 text-xs uppercase tracking-wider text-muted">
+              最近見たプレイヤー
+            </div>
+            <ul class="flex flex-wrap gap-2">
+              <li v-for="n in recents" :key="'recent-' + n">
+                <button
+                  class="rounded-lg border border-border px-3 py-1 hover:bg-[#11151b]"
+                  @click="openPlayer(n)"
+                >
+                  {{ n }}
+                </button>
+              </li>
+            </ul>
+          </div>
           <div class="mb-2 text-xs uppercase tracking-wider text-muted">
             アクション
           </div>
@@ -53,11 +83,12 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, nextTick } from "vue";
-import { navigateTo } from "nuxt/app";
-
+// useFavorites/useRecent are auto-imported (composables)
 const open = ref(false);
 const q = ref("");
 const inputEl = ref<HTMLInputElement | null>(null);
+const { favs } = useFavorites();
+const { recents } = useRecent();
 
 function onKey(e: KeyboardEvent) {
   const isCmdK = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k";
@@ -81,6 +112,10 @@ function goRankings() {
   open.value = false;
 }
 function close() {
+  open.value = false;
+}
+function openPlayer(n: string) {
+  navigateTo("/player/" + encodeURIComponent(n));
   open.value = false;
 }
 

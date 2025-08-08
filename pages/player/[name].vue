@@ -1,29 +1,8 @@
 <template>
   <section class="space-y-6">
     <div class="flex items-center justify-between">
-      <h1 class="text-2xl font-bold">
-        {{ decodeURIComponent(route.params.name as string) }}
-      </h1>
-      <div class="flex items-center gap-2 text-sm text-muted">
-        <label class="flex items-center gap-2">
-          対象試合数
-          <select
-            v-model.number="rwindow"
-            class="rounded-xl bg-surface px-2 py-1 ring-1 ring-border"
-          >
-            <option :value="60">60</option>
-            <option :value="120">120</option>
-            <option :value="240">240</option>
-            <option :value="9999">全期間</option>
-          </select>
-        </label>
-        <button
-          class="rounded-lg border border-border px-2 py-1 hover:text-text"
-          @click="copyLink"
-        >
-          共有
-        </button>
-      </div>
+      <h1 class="text-2xl font-bold">{{ displayName }}</h1>
+      <StarButton :name="displayName" />
     </div>
 
     <div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
@@ -74,16 +53,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount, watchEffect } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import MatchTableMock from "~/components/MatchTableMock.vue";
-import RankTrendChart from "~/components/RankTrendChart.vue";
-import RankPieChart from "~/components/RankPieChart.vue";
 import { getLineOptions } from "~/utils/chartTheme";
 import { pct, toneForKpi } from "~/utils/kpi";
 
 const route = useRoute();
 const router = useRouter();
+const displayName = computed(() =>
+  decodeURIComponent(route.params.name as string)
+);
+
+// 最近見たに追加（composableは自動インポート）
+const { push } = useRecent();
+onMounted(() => push(displayName.value));
 
 // Query param: rwindow (対象試合数)
 const rwindow = ref<number>(Number(route.query.rwindow ?? 120) || 120);
@@ -111,7 +94,10 @@ const ranks = ref<number[]>(
     return 4;
   })
 );
-const visibleRanks = computed(() => ranks.value.slice(-rwindow.value));
+const visibleRanks = computed(() => {
+  const n = rwindow.value >= 9999 ? ranks.value.length : rwindow.value;
+  return ranks.value.slice(-n);
+});
 
 let chart: any;
 const chartBox = ref<HTMLElement | null>(null);
@@ -128,10 +114,4 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   chart?.dispose?.();
 });
-
-async function copyLink() {
-  try {
-    await navigator.clipboard.writeText(location.href);
-  } catch {}
-}
 </script>
