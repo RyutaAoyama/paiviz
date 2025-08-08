@@ -1,0 +1,16 @@
+:root {
+  --bg: #0B0F14;
+  --surface: #121821;
+  --surface-2: #0E141C;
+  --border: #232B36;
+  --text: #E6EAF0;
+  --muted: #98A2B3;
+  --jade: #16C4B8;
+  --jade-2: #2AE9D7;
+  --plum: #9B5CF6;
+  --plum-2: #B58BFF;
+  --warn: #F97066;
+  --ok: #47CD89;
+  --inner-1: 0 1px 0 rgba(12,14,18,.8) inset;
+  --stroke-1: 0 0 0 1px var(--border) inset;
+}

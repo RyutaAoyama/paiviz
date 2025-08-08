@@ -1,0 +1,15 @@
+@import './tokens.css';
+:root { color-scheme: dark; }
+html, body, #__nuxt { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, 'Noto Sans JP', system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+}
+hr { border-color: var(--border); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--inner-1), var(--stroke-1); }
+.aurora { position: relative; overflow: hidden; }
+.aurora::before { content: ""; position: absolute; inset: -20%; background: conic-gradient(from 200deg at 50% 50%, rgba(22,196,184,.25), rgba(155,92,246,.18), rgba(22,196,184,.25)); filter: blur(48px); transform: rotate(8deg); pointer-events: none; }
+.tabular-nums { font-variant-numeric: tabular-nums; }
+.row-hover:hover { background: #11151b; }
+.pill { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 22px; padding: 0 8px; border-radius: 9999px; background: rgba(22,196,184,.12); color: var(--jade); border: 1px solid rgba(22,196,184,.28); }
