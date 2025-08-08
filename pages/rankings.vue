@@ -2,7 +2,7 @@
   <section class="space-y-4">
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-bold">ランキング</h1>
-      <div class="flex items-center gap-2 text-sm text-muted">
+      <div class="hidden md:flex items-center gap-2 text-sm text-muted">
         <button
           class="rounded-lg border border-border px-2 py-1 hover:text-text"
           @click="toggleDense"
@@ -18,15 +18,8 @@
       </div>
     </div>
 
-    <div class="grid grid-cols-2 gap-2 md:grid-cols-4">
-      <select
-        v-model="period"
-        class="rounded-xl bg-surface px-3 py-2 ring-1 ring-border"
-      >
-        <option value="this">今月</option>
-        <option value="prev">先月</option>
-        <option value="all">通期</option>
-      </select>
+    <div class="grid grid-cols-1 gap-2 md:grid-cols-[1fr_1fr_1fr_auto]">
+      <DateRangePicker @update="onRange" />
       <select
         v-model="tableType"
         class="rounded-xl bg-surface px-3 py-2 ring-1 ring-border"
@@ -132,19 +125,32 @@
       </div>
     </div>
     <div class="text-xs text-muted">
-      ヒント: ヘッダクリックでソート。URLクエリに状態が保存されます。
+      ヒント: 期間・卓・ルール・ソートはURLに保存されます。
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
-const { useRoute, useRouter } = await import("vue-router");
+import { ref, reactive, computed, watch, onMounted } from "vue";
+import { useRoute, useRouter } from "vue-router";
+
 const route = useRoute();
 const router = useRouter();
 
-const period = ref(route.query.period?.toString() || "this");
+// range state (mode/from/to)
+const mode = ref(String(route.query.mode ?? "this"));
+const from = ref(String(route.query.from ?? ""));
+const to = ref(String(route.query.to ?? ""));
+
+function onRange(p: { mode: string; from: string; to: string }) {
+  mode.value = p.mode;
+  from.value = p.from;
+  to.value = p.to;
+}
+
+// other filters
 const tableType = ref(route.query.tableType?.toString() || "特上");
-const rule = ref(route.query.rule?.toString() || "東南");
+const rule = ref(route.query.rule?.toString() || "東");
 const dense = ref(route.query.dense === "true" ? true : false);
 
 const sort = reactive<{
@@ -154,21 +160,26 @@ const sort = reactive<{
   key: (route.query.sortKey?.toString() as any) || "rate",
   dir: (route.query.sortDir?.toString() as any) || "desc",
 });
+watch(
+  [mode, from, to, tableType, rule, dense, () => sort.key, () => sort.dir],
+  () => {
+    router.replace({
+      query: {
+        ...route.query,
+        mode: mode.value,
+        from: from.value,
+        to: to.value,
+        tableType: tableType.value,
+        rule: rule.value,
+        dense: String(dense.value),
+        sortKey: sort.key,
+        sortDir: sort.dir,
+      },
+    });
+  }
+);
 
-watch([period, tableType, rule, dense, () => sort.key, () => sort.dir], () => {
-  router.replace({
-    query: {
-      ...route.query,
-      period: period.value,
-      tableType: tableType.value,
-      rule: rule.value,
-      dense: String(dense.value),
-      sortKey: sort.key,
-      sortDir: sort.dir,
-    },
-  });
-});
-
+// sort helpers (templateから使う)
 function setSort(key: "rank" | "name" | "rate" | "games") {
   if (sort.key === key) sort.dir = sort.dir === "asc" ? "desc" : "asc";
   else {
@@ -187,9 +198,11 @@ function icon(k: string): "asc" | "desc" | "none" {
   return sort.key === k ? sort.dir : "none";
 }
 
+// mock loading skeleton
 const loading = ref(true);
 onMounted(() => setTimeout(() => (loading.value = false), 300));
 
+// virtual list & sort
 const rowHeight = computed(() => (dense.value ? 40 : 48));
 const total = 1000;
 const data = Array.from({ length: total }).map((_, i) => ({
@@ -199,6 +212,7 @@ const data = Array.from({ length: total }).map((_, i) => ({
   games: Math.floor(50 + Math.random() * 300),
   spark: Array.from({ length: 16 }, () => Math.floor(1 + Math.random() * 4)),
 }));
+
 const sorted = computed(() => {
   const base = [...data];
   const dir = sort.dir === "asc" ? 1 : -1;
@@ -207,7 +221,6 @@ const sorted = computed(() => {
   if (sort.key === "games")
     return base.sort((a, b) => (a.games - b.games) * dir);
   if (sort.key === "rate") return base.sort((a, b) => (a.rate - b.rate) * dir);
-  // rank: fallback is rate desc
   return base.sort((a, b) => b.rate - a.rate);
 });
 
