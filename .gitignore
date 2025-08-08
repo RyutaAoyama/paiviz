@@ -1,0 +1,25 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+.DS_Store
+
+# Nuxt
+.nuxt/
+.output/
+.cache/
+dist/
+
+# Env / local
+.env
+.env.*
+*.local
+
+# Editors
+.vscode/
+.idea/
+
+# Deploy providers (将来使うかもだけど生成物は無視)
+.vercel/
+.netlify/
