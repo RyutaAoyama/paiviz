@@ -39,6 +39,11 @@
       <div style="height: 280px" ref="chartBox"></div>
     </div>
 
+    <div class="grid gap-4 md:grid-cols-2">
+      <RankTrendChart :ranks="ranks" />
+      <RankPieChart :ranks="ranks" />
+    </div>
+
     <div>
       <div class="mb-2 text-sm text-muted">直近の対局（モック, ▶公式へ）</div>
       <MatchTableMock />
@@ -49,9 +54,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from "vue";
 import { useRoute } from "vue-router";
-// @ts-ignore: 型宣言が無いが、存在することを前提にインポート
 import { getLineOptions } from "~/utils/chartTheme";
-// @ts-ignore: 型宣言が無いが、存在することを前提にインポート
 import { pct, toneForKpi } from "~/utils/kpi";
 
 const route = useRoute();
@@ -64,6 +67,17 @@ const kpi = {
   furo: 0.31,
   avgRank: 2.48,
 };
+
+// --- dummy rank series (1..4) ---
+const ranks = ref<number[]>(
+  Array.from({ length: 120 }).map(() => {
+    const r = Math.random();
+    if (r < 0.27) return 1;
+    if (r < 0.27 + 0.26) return 2;
+    if (r < 0.27 + 0.26 + 0.25) return 3;
+    return 4;
+  })
+);
 
 let chart: any;
 const chartBox = ref<HTMLElement | null>(null);
