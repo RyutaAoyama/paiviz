@@ -44,16 +44,22 @@
         <option>東</option>
       </select>
       <select
-        v-model="sortKey"
+        v-model="sort.key"
         class="rounded-xl bg-surface px-3 py-2 ring-1 ring-border"
       >
         <option value="rate">Rate</option>
         <option value="games">対局数</option>
-        <option value="win">勝率</option>
+        <option value="name">名前</option>
       </select>
     </div>
 
+    <SkeletonTable
+      v-if="loading"
+      :rows="Math.ceil((dense ? 480 : 560) / rowHeight)"
+    />
+
     <div
+      v-else
       ref="viewport"
       class="rounded-2xl border border-border bg-surface text-sm focus-ring"
       :style="{ height: (dense ? 480 : 560) + 'px', overflow: 'auto' }"
@@ -61,6 +67,40 @@
       @keydown="onKey"
       @scroll="onScroll"
     >
+      <div
+        class="sticky top-0 grid grid-cols-[72px_1fr_90px_160px_90px] gap-3 border-b border-border bg-surface/80 px-3 py-2 text-xs text-muted backdrop-blur"
+      >
+        <button
+          class="text-left"
+          @click="setSort('rank')"
+          :aria-sort="aria('rank')"
+        >
+          # <SortIcon :dir="icon('rank')" />
+        </button>
+        <button
+          class="text-left"
+          @click="setSort('name')"
+          :aria-sort="aria('name')"
+        >
+          名前 <SortIcon :dir="icon('name')" />
+        </button>
+        <button
+          class="text-left"
+          @click="setSort('rate')"
+          :aria-sort="aria('rate')"
+        >
+          Rate <SortIcon :dir="icon('rate')" />
+        </button>
+        <div>直近</div>
+        <button
+          class="text-left"
+          @click="setSort('games')"
+          :aria-sort="aria('games')"
+        >
+          対局数 <SortIcon :dir="icon('games')" />
+        </button>
+      </div>
+
       <div
         :style="{ height: totalHeight + 'px', position: 'relative' }"
         role="table"
@@ -92,33 +132,65 @@
       </div>
     </div>
     <div class="text-xs text-muted">
-      ヒント: URLクエリにフィルタ状態が保存されます。共有も簡単！
+      ヒント: ヘッダクリックでソート。URLクエリに状態が保存されます。
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from "vue";
-import { load, save } from "~/utils/storage";
+const { useRoute, useRouter } = await import("vue-router");
+const route = useRoute();
+const router = useRouter();
 
-const period = ref(load("rk.period", "this"));
-const tableType = ref(load("rk.tableType", "特上"));
-const rule = ref(load("rk.rule", "東南"));
-const sortKey = ref<"rate" | "games" | "win">(load("rk.sortKey", "rate"));
+const period = ref(route.query.period?.toString() || "this");
+const tableType = ref(route.query.tableType?.toString() || "特上");
+const rule = ref(route.query.rule?.toString() || "東南");
+const dense = ref(route.query.dense === "true" ? true : false);
 
-const dense = ref(load("rk.dense", false));
-watch(dense, (v) => save("rk.dense", v));
+const sort = reactive<{
+  key: "rank" | "name" | "rate" | "games";
+  dir: "asc" | "desc";
+}>({
+  key: (route.query.sortKey?.toString() as any) || "rate",
+  dir: (route.query.sortDir?.toString() as any) || "desc",
+});
 
-useQuerySync({ period, tableType, rule, sortKey, dense } as any, [
-  "period",
-  "tableType",
-  "rule",
-  "sortKey",
-  "dense",
-]);
+watch([period, tableType, rule, dense, () => sort.key, () => sort.dir], () => {
+  router.replace({
+    query: {
+      ...route.query,
+      period: period.value,
+      tableType: tableType.value,
+      rule: rule.value,
+      dense: String(dense.value),
+      sortKey: sort.key,
+      sortDir: sort.dir,
+    },
+  });
+});
+
+function setSort(key: "rank" | "name" | "rate" | "games") {
+  if (sort.key === key) sort.dir = sort.dir === "asc" ? "desc" : "asc";
+  else {
+    sort.key = key;
+    sort.dir = key === "name" ? "asc" : "desc";
+  }
+}
+function aria(k: string) {
+  return sort.key === k
+    ? sort.dir === "asc"
+      ? "ascending"
+      : "descending"
+    : "none";
+}
+function icon(k: string): "asc" | "desc" | "none" {
+  return sort.key === k ? sort.dir : "none";
+}
+
+const loading = ref(true);
+onMounted(() => setTimeout(() => (loading.value = false), 300));
 
 const rowHeight = computed(() => (dense.value ? 40 : 48));
-
 const total = 1000;
 const data = Array.from({ length: total }).map((_, i) => ({
   id: i,
@@ -129,9 +201,14 @@ const data = Array.from({ length: total }).map((_, i) => ({
 }));
 const sorted = computed(() => {
   const base = [...data];
-  if (sortKey.value === "rate") return base.sort((a, b) => b.rate - a.rate);
-  if (sortKey.value === "games") return base.sort((a, b) => b.games - a.games);
-  return base; // dummy
+  const dir = sort.dir === "asc" ? 1 : -1;
+  if (sort.key === "name")
+    return base.sort((a, b) => a.name.localeCompare(b.name) * dir);
+  if (sort.key === "games")
+    return base.sort((a, b) => (a.games - b.games) * dir);
+  if (sort.key === "rate") return base.sort((a, b) => (a.rate - b.rate) * dir);
+  // rank: fallback is rate desc
+  return base.sort((a, b) => b.rate - a.rate);
 });
 
 const viewport = ref<HTMLElement | null>(null);
