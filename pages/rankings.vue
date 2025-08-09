@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { h, ref, onMounted, watch } from 'vue';
-import FavStar from '~/components/FavStar.vue';
+import { h, ref, onMounted, watch, resolveComponent } from 'vue';
 import type { RankResponse, RankRequest } from '~/workers/rankWorker';
+import { getRankingRows, type RankingRow } from '~/providers/rankings';
 const { model, syncToUrl } = useRankingQuery();
 const url = useRequestURL();
 useHead(() => {
@@ -37,26 +37,18 @@ useHead(() => {
   };
 });
 
-type Row = { rank: number; name: string; rate: number; games: number; trend: string };
+type Row = RankingRow;
 const rows = ref<Row[]>([]);
 const filtered = ref<Row[]>([]);
 const loading = ref(true);
 let worker: Worker | null = null;
 const { list: favList } = useFavorites();
-
-const genRows = (): Row[] => {
-  return Array.from({ length: 50000 }, (_, i) => ({
-    rank: i + 1,
-    name: `Player_${(i + 1).toString().padStart(5, '0')}`,
-    rate: 2000 + Math.round(Math.random() * 800),
-    games: 50 + Math.round(Math.random() * 200),
-    trend: '↗︎',
-  }));
-};
+const FavStar = resolveComponent('FavStar');
 
 const recalc = (): void => {
   if (!worker) return;
   loading.value = true;
+  rows.value = getRankingRows(model.value);
   const sortKeys: RankRequest['sort']['keys'] = [];
   const sk = model.value.sortKey;
   const dir = model.value.sortDir;
@@ -82,7 +74,6 @@ if (process.client) {
 }
 
 onMounted(() => {
-  rows.value = genRows();
   recalc();
 });
 
