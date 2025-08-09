@@ -6,18 +6,47 @@ export type KPI = {
   avgRank: number;
 };
 
-export const getPlayerKpi = async (name: string): Promise<KPI | null> => {
+export type RankDist = {
+  first: number;
+  second: number;
+  third: number;
+  fourth: number;
+};
+
+export type PlayerStats = {
+  kpi: KPI;
+  ranks: number[];
+  dist: RankDist;
+};
+
+const pseudoRandom = (seed: number) => () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32;
+
+export const getPlayerStats = async (name: string): Promise<PlayerStats | null> => {
   if (!name) return null;
   let seed = 0;
   for (const ch of name) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
-  const rand = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32;
-  return {
+  const rand = pseudoRandom(seed);
+  const ranks = Array.from({ length: 40 }, () => 1 + Math.floor(rand() * 4));
+  const dist: RankDist = { first: 0, second: 0, third: 0, fourth: 0 };
+  for (const r of ranks) {
+    if (r === 1) dist.first++;
+    else if (r === 2) dist.second++;
+    else if (r === 3) dist.third++;
+    else dist.fourth++;
+  }
+  const kpi: KPI = {
     agari: 0.18 + rand() * 0.1,
     houju: 0.08 + rand() * 0.07,
     riichi: 0.15 + rand() * 0.1,
     furo: 0.2 + rand() * 0.3,
     avgRank: 1.8 + rand() * 1.4,
   };
+  return { kpi, ranks, dist };
+};
+
+export const getPlayerKpi = async (name: string): Promise<KPI | null> => {
+  const stats = await getPlayerStats(name);
+  return stats?.kpi ?? null;
 };
 
 export type Tone = 'good' | 'bad' | 'neutral';
