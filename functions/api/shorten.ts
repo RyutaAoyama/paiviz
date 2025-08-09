@@ -1,6 +1,14 @@
+/// <reference lib="webworker" />
+/// <reference types="@cloudflare/workers-types" />
 export const onRequestPost: PagesFunction<{ PAIVIZ_LINKS: KVNamespace }> = async (ctx) => {
   try {
     const { request, env } = ctx
+
+    // Basic rate limit: 20 req/min per IP for shorten
+    const ip = request.headers.get('CF-Connecting-IP') || '0.0.0.0'
+    const allowed = await rateLimit(env, `rl:shorten:${ip}`, 20, 60)
+    if (!allowed) return json({ error: 'rate_limited' }, 429)
+
     const ct = request.headers.get('content-type') || ''
     if (!ct.includes('application/json')) return json({ error: 'invalid_content_type' }, 415)
 
@@ -58,4 +66,14 @@ function rid(n = 8) {
   let s = ''
   for (const v of arr) s += abc[v % abc.length]
   return s
+}
+
+async function rateLimit(env: { PAIVIZ_LINKS: KVNamespace }, key: string, limit: number, windowSec: number){
+  const now = Date.now()
+  const bucketKey = `${key}:${Math.floor(now / (windowSec*1000))}`
+  const cur = await env.PAIVIZ_LINKS.get(bucketKey)
+  const n = cur ? parseInt(cur) : 0
+  if (n >= limit) return false
+  await env.PAIVIZ_LINKS.put(bucketKey, String(n+1), { expirationTtl: windowSec + 5 })
+  return true
 }

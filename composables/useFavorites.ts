@@ -1,29 +1,19 @@
-import { ref } from 'vue'
-
-const KEY = 'fav.players'
-const favs = ref<string[]>([])
-
-function load() {
-  try {
-    const s = localStorage.getItem(KEY)
-    favs.value = s ? JSON.parse(s) : []
-  } catch {
-    favs.value = []
-  }
-}
-function save() {
-  try { localStorage.setItem(KEY, JSON.stringify(favs.value)) } catch {}
-}
-
 export function useFavorites() {
-  if (!favs.value.length) load()
-  function isFav(name: string) { return favs.value.includes(name) }
-  function toggle(name: string) {
-    const i = favs.value.indexOf(name)
-    if (i >= 0) favs.value.splice(i, 1)
-    else favs.value.unshift(name)
-    favs.value = [...new Set(favs.value)].slice(0, 50)
-    save()
+  const key = "paiviz:favs";
+  const list = ref<string[]>([]);
+  if (process.client) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw) list.value = JSON.parse(raw);
+    } catch {}
   }
-  return { favs, isFav, toggle }
+  function toggle(name: string) {
+    const set = new Set(list.value);
+    if (set.has(name)) set.delete(name);
+    else set.add(name);
+    list.value = Array.from(set).slice(0, 200);
+    if (process.client) localStorage.setItem(key, JSON.stringify(list.value));
+  }
+  const isFav = (name: string) => list.value.includes(name);
+  return { list, toggle, isFav };
 }

@@ -1,26 +1,16 @@
-import { ref } from 'vue'
-
-const KEY = 'recent.players'
-const recents = ref<string[]>([])
-
-function load() {
-  try {
-    const s = localStorage.getItem(KEY)
-    recents.value = s ? JSON.parse(s) : []
-  } catch {
-    recents.value = []
-  }
-}
-function save() {
-  try { localStorage.setItem(KEY, JSON.stringify(recents.value)) } catch {}
-}
-
 export function useRecent() {
-  if (!recents.value.length) load()
-  function push(name: string) {
-    if (!name) return
-    recents.value = [name, ...recents.value.filter(n => n !== name)].slice(0, 50)
-    save()
+  const key = "paiviz:recent";
+  const recent = ref<string[]>([]);
+  if (process.client) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw) recent.value = JSON.parse(raw);
+    } catch {}
   }
-  return { recents, push }
+  function addRecent(name: string) {
+    const set = new Set([name, ...recent.value]);
+    recent.value = Array.from(set).slice(0, 20);
+    if (process.client) localStorage.setItem(key, JSON.stringify(recent.value));
+  }
+  return { recent, addRecent };
 }
