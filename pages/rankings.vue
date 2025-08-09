@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { h, ref, onMounted, watch, resolveComponent, computed } from 'vue';
 import { getRankingRows, type RankingRow } from '~/providers/rankings';
-import type { Model } from '~/types/rankings';
+import type { Model, TableType, Rule } from '~/types/rankings';
 const { model, syncToUrl } = useRankingQuery();
 const url = useRequestURL();
 useHead(() => {
@@ -43,31 +43,39 @@ const loading = ref(true);
 const { list: favList } = useFavorites();
 const FavStar = resolveComponent('FavStar');
 
-// テーブルのフィルタとソート
-const applyFilter = (all: Row[], q: Model): Row[] => {
-  const favSet = new Set(favList.value);
-  let out = all.filter((r) => r.tableType === q.tableType && r.rule === q.rule);
-  if (q.favOnly) out = out.filter((r) => favSet.has(r.name));
+// テーブルのフィルタとソート（厳密一致）
+function applyFilter(
+  all: Row[],
+  q: {
+    tableType: TableType;
+    rule: Rule;
+    favOnly?: boolean;
+    sortKey: Model['sortKey'];
+    sortDir: Model['sortDir'];
+  },
+  favSet: Set<string>
+) {
+  const out = all.filter(
+    (r) => r.tableType === q.tableType && r.rule === q.rule && (!q.favOnly || favSet.has(r.name))
+  );
   const dir = q.sortDir === 'asc' ? 1 : -1;
-  const primary = (a: Row, b: Row): number => {
+  const sorted = [...out].sort((a, b) => {
     if (q.sortKey === 'rate') return (a.rate - b.rate) * dir;
     if (q.sortKey === 'games') return (a.games - b.games) * dir;
     if (q.sortKey === 'name') return a.name.localeCompare(b.name) * dir;
     return (a.rank - b.rank) * dir;
-  };
-  return [...out].sort((a, b) => {
-    const p = primary(a, b);
-    if (p !== 0) return p;
-    if (a.games !== b.games) return b.games - a.games; // 対局数多い順
-    return a.name.localeCompare(b.name); // 名前昇順
   });
-};
-const filtered = computed<Row[]>(() => applyFilter(rows.value, model.value));
+  return sorted;
+}
+const filtered = computed<Row[]>(() =>
+  applyFilter(rows.value, model.value, new Set(favList.value))
+);
 
 const recalc = async (): Promise<void> => {
   loading.value = true;
-  rows.value = await getRankingRows(model.value);
+  rows.value = await getRankingRows();
   loading.value = false;
+  if (process.client) (window as unknown as { __paivizRows?: typeof rows }).__paivizRows = rows; // デバッグ公開
 };
 
 onMounted(() => {
@@ -75,20 +83,22 @@ onMounted(() => {
 });
 
 watch(
-  () => [model.value.mode, model.value.tableType, model.value.rule],
+  model,
   () => {
     void recalc();
-  }
+  },
+  { deep: true }
 );
 
 // CSV
 import { toCsv, downloadCsv } from '~/utils/csv';
 const exportCsv = (): void => {
   const csv = toCsv(filtered.value, [
-    { key: 'rank', label: '#' },
     { key: 'name', label: '名前' },
     { key: 'rate', label: 'Rate' },
     { key: 'games', label: '対局数' },
+    { key: 'tableType', label: '卓' },
+    { key: 'rule', label: 'ルール' },
   ]);
   const q = model.value;
   const ymd = new Date().toISOString().slice(0, 10).replace(/-/g, '');

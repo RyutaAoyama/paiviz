@@ -113,8 +113,10 @@ useHead(() => {
 const { isFav, list: favs } = useFavorites();
 const { recent } = useRecent();
 
-const baseRows = await getRankingRows({ tableType: '特上', rule: '東' });
-const rows = ref<RankingRow[]>(baseRows.slice(0, 10));
+const baseRows = await getRankingRows();
+const rows = ref<RankingRow[]>(
+  baseRows.filter((r) => r.tableType === '特上' && r.rule === '東').slice(0, 10)
+);
 const rowsSafe = computed<RankingRow[]>(() => (Array.isArray(rows.value) ? rows.value : []));
 const favSafe = computed<string[]>(() => (Array.isArray(favs.value) ? favs.value : []));
 const recSafe = computed<string[]>(() => (Array.isArray(recent.value) ? recent.value : []));
