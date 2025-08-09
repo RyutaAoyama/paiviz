@@ -7,9 +7,9 @@
         :key="p.value"
         class="chip"
         :class="{ 'chip--active': model.mode === p.value }"
-        @click="set('mode', p.value)"
+        @click="onClickMode(p.value)"
       >
-        >{{ p.label }}
+        {{ p.label }}
       </button>
       <button class="chip" @click="openDrawer">詳細</button>
     </div>
@@ -58,15 +58,33 @@
         {{ s.label }}
       </button>
     </div>
+
+    <div class="mx-2 h-5 w-px self-center bg-[#242A33]" />
+
+    <!-- Favorites only -->
+    <button
+      class="chip"
+      :class="{ 'chip--active': model.favOnly }"
+      :aria-pressed="model.favOnly"
+      @click="set('favOnly', !model.favOnly)"
+    >
+      ★ お気に入り
+    </button>
   </div>
 </template>
 
 <script setup lang="ts">
+type Mode = "this" | "prev" | "last30d" | "last90d" | "custom";
+type Table = "一般" | "上" | "特上" | "鳳凰";
+type Rule = "東南" | "東";
+type SortKey = "rate" | "games" | "name" | "rank";
+
 type Model = {
-  mode: "this" | "prev" | "last30d" | "last90d" | "custom";
+  mode: Mode;
   tableType: Table;
   rule: Rule;
-  sortKey: "rate" | "games" | "name" | "rank";
+  sortKey: SortKey;
+  favOnly: boolean;
 };
 
 const props = defineProps<{ modelValue: Model }>();
@@ -82,33 +100,37 @@ watch(
 );
 watch(model, (v) => emit("update:modelValue", { ...v }), { deep: true });
 
-/** 型が文字列Unionのまま保たれるように as const / satisfies を使用 */
 const periodPresets = [
   { value: "this", label: "今月" },
   { value: "prev", label: "先月" },
   { value: "last30d", label: "30日" },
   { value: "last90d", label: "90日" },
   { value: "custom", label: "カスタム" },
-] as const satisfies ReadonlyArray<{ value: Model["mode"]; label: string }>;
+] as const satisfies ReadonlyArray<{ value: Mode; label: string }>;
 
-const tables = ["一般", "上", "特上", "鳳凰"] as const;
-type Table = (typeof tables)[number];
-
-const rules = ["東南", "東"] as const;
-type Rule = (typeof rules)[number];
-
+const tables = [
+  "一般",
+  "上",
+  "特上",
+  "鳳凰",
+] as const satisfies ReadonlyArray<Table>;
+const rules = ["東南", "東"] as const satisfies ReadonlyArray<Rule>;
 const sorts = [
   { value: "rank", label: "#（順位）" },
   { value: "rate", label: "Rate" },
   { value: "games", label: "対局数" },
   { value: "name", label: "名前" },
-] as const satisfies ReadonlyArray<{ value: Model["sortKey"]; label: string }>;
+] as const satisfies ReadonlyArray<{ value: SortKey; label: string }>;
 
 function set<K extends keyof Model>(k: K, v: Model[K]) {
   (model as any)[k] = v;
 }
 function openDrawer() {
   emit("openDrawer");
+}
+function onClickMode(v: Mode) {
+  set("mode", v);
+  if (v === "custom") openDrawer(); // カスタム選択でドロワー自動オープン
 }
 </script>
 

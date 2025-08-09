@@ -101,6 +101,7 @@
 
     <FilterDrawer
       v-model:open="drawerOpen"
+      v-model:favOnly="favOnly"
       @range="onRange"
       @exportCsv="onExportCsv"
       @share="copyLink"
@@ -118,7 +119,6 @@ import { ref, reactive, computed, watch, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { downloadCsv } from "~/utils/csv";
 
-/* --- ここから型とガード（親でナローイング） --- */
 type Mode = "this" | "prev" | "last30d" | "last90d" | "custom";
 type Table = "一般" | "上" | "特上" | "鳳凰";
 type Rule = "東南" | "東";
@@ -134,51 +134,63 @@ const asTable = (v: any): Table => (TABLES.includes(v) ? (v as Table) : "特上"
 const asRule = (v: any): Rule => (RULES.includes(v) ? (v as Rule) : "東");
 const asSortKey = (v: any): SortKey =>
   SORTS.includes(v) ? (v as SortKey) : "rate";
-/* --- ここまで --- */
 
 const route = useRoute();
 const router = useRouter();
 const { isFav } = useFavorites();
 const { push: pushToast } = useToast();
 
-// --- URLと同期するステート（Union型で保持） ---
+// --- URL同期ステート ---
 const mode = ref<Mode>(asMode(route.query.mode));
 const from = ref(String(route.query.from ?? ""));
 const to = ref(String(route.query.to ?? ""));
-
 const tableType = ref<Table>(asTable(route.query.tableType));
 const rule = ref<Rule>(asRule(route.query.rule));
 const dense = ref(route.query.dense === "true");
+const favOnly = ref(route.query.favOnly === "true");
 
 const sort = reactive<{ key: SortKey; dir: "asc" | "desc" }>({
   key: asSortKey(route.query.sortKey),
   dir: route.query.sortDir === "asc" ? "asc" : "desc",
 });
 
-// FilterChips の v-model と揃う型で get/set
+// FilterChips の v-model と一致する型
 const chipModel = computed<{
   mode: Mode;
   tableType: Table;
   rule: Rule;
   sortKey: SortKey;
+  favOnly: boolean;
 }>({
   get: () => ({
     mode: mode.value,
     tableType: tableType.value,
     rule: rule.value,
     sortKey: sort.key,
+    favOnly: favOnly.value,
   }),
   set: (v) => {
     mode.value = v.mode;
     tableType.value = v.tableType;
     rule.value = v.rule;
     sort.key = v.sortKey;
+    favOnly.value = v.favOnly;
   },
 });
 
 // URL更新
 watch(
-  [mode, from, to, tableType, rule, dense, () => sort.key, () => sort.dir],
+  [
+    mode,
+    from,
+    to,
+    tableType,
+    rule,
+    dense,
+    favOnly,
+    () => sort.key,
+    () => sort.dir,
+  ],
   () => {
     router.replace({
       query: {
@@ -189,6 +201,7 @@ watch(
         tableType: tableType.value,
         rule: rule.value,
         dense: String(dense.value),
+        favOnly: String(favOnly.value),
         sortKey: sort.key,
         sortDir: sort.dir,
       },
@@ -196,9 +209,9 @@ watch(
   }
 );
 
-// ドロワーからの期間更新
+// ドロワーからの期間更新（string受け→ナロー）
 function onRange(p: { mode: string; from: string; to: string }) {
-  mode.value = asMode(p.mode); // ← 既存の asMode() を使って union にナロー
+  mode.value = asMode(p.mode);
   from.value = p.from;
   to.value = p.to;
 }
@@ -211,14 +224,14 @@ function setSort(key: SortKey) {
     sort.dir = key === "name" ? "asc" : "desc";
   }
 }
-function aria(k: SortKey | "rank") {
+function aria(k: SortKey) {
   return sort.key === k
     ? sort.dir === "asc"
       ? "ascending"
       : "descending"
     : "none";
 }
-function icon(k: SortKey | "rank") {
+function icon(k: SortKey) {
   return sort.key === k ? sort.dir : "none";
 }
 
@@ -226,8 +239,16 @@ function icon(k: SortKey | "rank") {
 const loading = ref(true);
 onMounted(() => setTimeout(() => (loading.value = false), 250));
 
-// 仮想リスト & ソート（rankはそのまま順序/逆順）
+// ---- データ（モックだが日付持ち）+ フィルタ + ソート ----
 const rowHeight = computed(() => (dense.value ? 40 : 48));
+
+function randomDateWithin(days = 120) {
+  const to = new Date();
+  const from = new Date(to.getTime() - days * 86400000);
+  const t = from.getTime() + Math.random() * (to.getTime() - from.getTime());
+  return new Date(t);
+}
+
 const total = 1000;
 const data = Array.from({ length: total }).map((_, i) => ({
   id: i,
@@ -235,10 +256,40 @@ const data = Array.from({ length: total }).map((_, i) => ({
   rate: Math.floor(1800 + Math.random() * 600),
   games: Math.floor(50 + Math.random() * 300),
   spark: Array.from({ length: 16 }, () => Math.floor(1 + Math.random() * 4)),
+  playedAt: randomDateWithin(120) as Date,
 }));
 
+const filtered = computed(() => {
+  const list = [...data];
+  // 日付フィルタ
+  if (from.value && to.value) {
+    const fromD = new Date(from.value + "T00:00:00");
+    const toD = new Date(to.value + "T23:59:59");
+    list.splice(
+      0,
+      list.length,
+      ...list.filter((r) => r.playedAt >= fromD && r.playedAt <= toD)
+    );
+  } else {
+    // プリセットに応じて範囲を決める（UI実感用）
+    const days =
+      mode.value === "this"
+        ? 31
+        : mode.value === "prev"
+        ? 31
+        : mode.value === "last90d"
+        ? 90
+        : 30;
+    const fromD = new Date(Date.now() - days * 86400000);
+    list.splice(0, list.length, ...list.filter((r) => r.playedAt >= fromD));
+  }
+  // お気に入りのみ
+  if (favOnly.value) return list.filter((r) => isFav(r.name));
+  return list;
+});
+
 const sorted = computed(() => {
-  const base = [...data];
+  const base = [...filtered.value];
   const dir = sort.dir === "asc" ? 1 : -1;
   if (sort.key === "rank") return dir === 1 ? base : base.reverse();
   if (sort.key === "name")
@@ -249,6 +300,7 @@ const sorted = computed(() => {
   return base;
 });
 
+// 仮想リスト
 const viewport = ref<HTMLElement | null>(null);
 const startIndex = ref(0);
 const visibleCount = ref(0);

@@ -12,6 +12,7 @@
         <button
           class="rounded-lg border border-border px-2 py-1 hover:text-text"
           @click="swap"
+          title="Alt+S でも入れ替え"
         >
           入れ替え
         </button>
@@ -51,7 +52,7 @@ const a = ref<string>(String(route.query.a ?? "Player_A"));
 const b = ref<string>(String(route.query.b ?? "Player_B"));
 const rwindow = ref<number>(Number(route.query.rwindow ?? 120) || 120);
 
-// keep URL in sync
+// URL同期
 watch([a, b, rwindow], () => {
   router.replace({
     query: {
@@ -80,5 +81,18 @@ function swap() {
   const tmp = a.value;
   a.value = b.value;
   b.value = tmp;
+  pushToast("A/Bを入れ替えました", "success");
 }
+
+// Alt+S で入れ替え
+onMounted(() => {
+  const handler = (e: KeyboardEvent) => {
+    if (e.altKey && (e.key === "s" || e.key === "S")) {
+      e.preventDefault();
+      swap();
+    }
+  };
+  window.addEventListener("keydown", handler);
+  onBeforeUnmount(() => window.removeEventListener("keydown", handler));
+});
 </script>
