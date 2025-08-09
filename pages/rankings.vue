@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { h, ref, onMounted, watch, resolveComponent } from 'vue';
-import type { RankResponse, RankRequest } from '~/workers/rankWorker';
+import { h, ref, onMounted, watch, resolveComponent, computed } from 'vue';
 import { getRankingRows, type RankingRow } from '~/providers/rankings';
+import type { Model } from '~/types/rankings';
 const { model, syncToUrl } = useRankingQuery();
 const url = useRequestURL();
 useHead(() => {
@@ -39,53 +39,47 @@ useHead(() => {
 
 type Row = RankingRow;
 const rows = ref<Row[]>([]);
-const filtered = ref<Row[]>([]);
 const loading = ref(true);
-let worker: Worker | null = null;
 const { list: favList } = useFavorites();
 const FavStar = resolveComponent('FavStar');
 
+// テーブルのフィルタとソート
+const applyFilter = (all: Row[], q: Model): Row[] => {
+  const favSet = new Set(favList.value);
+  let out = all.filter((r) => r.tableType === q.tableType && r.rule === q.rule);
+  if (q.favOnly) out = out.filter((r) => favSet.has(r.name));
+  const dir = q.sortDir === 'asc' ? 1 : -1;
+  const primary = (a: Row, b: Row): number => {
+    if (q.sortKey === 'rate') return (a.rate - b.rate) * dir;
+    if (q.sortKey === 'games') return (a.games - b.games) * dir;
+    if (q.sortKey === 'name') return a.name.localeCompare(b.name) * dir;
+    return (a.rank - b.rank) * dir;
+  };
+  return [...out].sort((a, b) => {
+    const p = primary(a, b);
+    if (p !== 0) return p;
+    if (a.games !== b.games) return b.games - a.games; // 対局数多い順
+    return a.name.localeCompare(b.name); // 名前昇順
+  });
+};
+const filtered = computed<Row[]>(() => applyFilter(rows.value, model.value));
+
 const recalc = async (): Promise<void> => {
-  if (!worker) return;
   loading.value = true;
   rows.value = await getRankingRows(model.value);
-  const sortKeys: RankRequest['sort']['keys'] = [];
-  const sk = model.value.sortKey;
-  const dir = model.value.sortDir;
-  if (sk === 'rate') sortKeys.push({ key: 'rate', dir });
-  else if (sk === 'games') sortKeys.push({ key: 'games', dir });
-  else if (sk === 'name') sortKeys.push({ key: 'name', dir });
-  else sortKeys.push({ key: 'rate', dir: 'desc' });
-  sortKeys.push({ key: 'games', dir: 'desc' }, { key: 'name', dir: 'asc' });
-  const msg: RankRequest = {
-    rows: rows.value.map((r) => ({ ...r })),
-    filter: { favOnly: model.value.favOnly, favs: [...favList.value] },
-    sort: { keys: sortKeys },
-  };
-  worker.postMessage(msg);
+  loading.value = false;
 };
-
-if (process.client) {
-  worker = new Worker(new URL('~/workers/rankWorker.ts', import.meta.url), { type: 'module' });
-  worker.onmessage = (e: MessageEvent<RankResponse>) => {
-    filtered.value = e.data.rows as Row[];
-    loading.value = false;
-  };
-}
 
 onMounted(() => {
   void recalc();
 });
 
 watch(
-  () => ({ ...model.value }),
+  () => [model.value.mode, model.value.tableType, model.value.rule],
   () => {
     void recalc();
   }
 );
-watch(favList, () => {
-  void recalc();
-});
 
 // CSV
 import { toCsv, downloadCsv } from '~/utils/csv';

@@ -3,20 +3,36 @@ import type { RankRow } from '~/workers/rankWorker';
 
 export type RankingRow = RankRow & { spark: number[]; tableType: TableType; rule: Rule };
 
-const ALL_ROWS: RankingRow[] = Array.from({ length: 400 }, (_, i) => {
+// 単純なダミーデータ。特上/東が 300 件になるよう分布を調整。
+const ALL_ROWS: RankingRow[] = Array.from({ length: 460 }, (_, i) => {
   const name = `P-${(i + 1).toString().padStart(4, '0')}`;
   const rate = 1800 + ((i * 37) % 401);
   const games = 40 + ((i * 23) % 361);
   let tableType: TableType;
-  if (i < 280) tableType = '特上';
-  else if (i < 320) tableType = '一般';
-  else if (i < 360) tableType = '上';
-  else tableType = '鳳凰';
-  const rule: Rule = i % 10 < 6 ? '東' : '東南';
+  let rule: Rule;
+  if (i < 300) {
+    tableType = '特上';
+    rule = '東';
+  } else if (i < 340) {
+    tableType = '特上';
+    rule = '東南';
+  } else if (i < 380) {
+    tableType = '一般';
+    rule = '東';
+  } else if (i < 420) {
+    tableType = '上';
+    rule = '東南';
+  } else {
+    tableType = '鳳凰';
+    rule = '東';
+  }
   const len = 16 + (i % 17);
   const spark = Array.from({ length: len }, (_, j) => ((i + j) % 4) + 1);
   return { name, rate, games, spark, tableType, rule };
 });
+
+// クエリごとに一度だけ生成するためのキャッシュ
+const cache: Record<string, RankingRow[]> = {};
 
 /**
  * ランキング行を取得する（将来の実データ差し替えポイント）。
@@ -26,7 +42,12 @@ const ALL_ROWS: RankingRow[] = Array.from({ length: 400 }, (_, i) => {
 export const getRankingRows = async (query: {
   tableType: TableType;
   rule: Rule;
-}): Promise<RankingRow[]> =>
-  ALL_ROWS.filter((r) => r.tableType === query.tableType && r.rule === query.rule).map(
-    (r, idx) => ({ ...r, rank: idx + 1 })
-  );
+}): Promise<RankingRow[]> => {
+  const key = `${query.tableType}_${query.rule}`;
+  if (!cache[key]) {
+    cache[key] = ALL_ROWS.filter(
+      (r) => r.tableType === query.tableType && r.rule === query.rule
+    ).map((r, idx) => ({ ...r, rank: idx + 1 }));
+  }
+  return cache[key];
+};
