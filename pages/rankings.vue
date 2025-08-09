@@ -58,18 +58,33 @@ onMounted(load);
 
 // お気に入りフィルタ
 const { has } = useFavorites();
+const collator = new Intl.Collator('ja');
 const filtered = computed(() => {
   let r = rows.value;
   if (model.value.favOnly) r = r.filter((row) => has(row.name));
   const { sortKey, sortDir } = model.value;
-  const k = sortKey;
-  r = r.slice().sort((a: any, b: any) => {
-    const va = a[k],
-      vb = b[k];
-    return sortDir === 'asc' ? (va > vb ? 1 : -1) : va < vb ? 1 : -1;
+  const dir = sortDir === 'asc' ? 1 : -1;
+  const decorated = r.map((row, i) => ({ ...row, __idx: i }));
+  const order = (a: any, b: any): number => {
+    const seq: [string, number][] = [];
+    if (sortKey === 'rate') seq.push(['rate', dir], ['games', -1], ['name', 1]);
+    else if (sortKey === 'games') seq.push(['games', dir], ['rate', -1], ['name', 1]);
+    else if (sortKey === 'name') seq.push(['name', dir], ['rate', -1], ['games', -1]);
+    else seq.push(['rank', dir], ['rate', -1], ['games', -1], ['name', 1]);
+    for (const [k, d] of seq) {
+      let cmp = 0;
+      if (k === 'name') cmp = collator.compare(a.name, b.name);
+      else cmp = a[k] === b[k] ? 0 : a[k] > b[k] ? 1 : -1;
+      if (cmp !== 0) return d * cmp;
+    }
+    return a.__idx - b.__idx; // 安定化
+  };
+  const sorted = decorated.sort(order).map((row, idx) => {
+    const rest = { ...row };
+    delete rest.__idx;
+    return { ...rest, rank: idx + 1 };
   });
-  r.forEach((row, idx) => (row.rank = idx + 1));
-  return r;
+  return sorted;
 });
 
 // CSV
@@ -149,6 +164,8 @@ const columns = [
       :height="520"
       :row-height="44"
       key-field="name"
+      :sort-key="model.sortKey"
+      :sort-dir="model.sortDir"
     />
   </section>
 </template>
