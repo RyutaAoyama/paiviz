@@ -6,26 +6,10 @@
     </div>
 
     <div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
-      <KpiCard
-        label="和了率"
-        :value="pct(kpi.agari)"
-        :tone="toneForKpi('agari', kpi.agari)"
-      />
-      <KpiCard
-        label="放銃率"
-        :value="pct(kpi.houju)"
-        :tone="toneForKpi('houju', kpi.houju)"
-      />
-      <KpiCard
-        label="立直率"
-        :value="pct(kpi.riichi)"
-        :tone="toneForKpi('riichi', kpi.riichi)"
-      />
-      <KpiCard
-        label="副露率"
-        :value="pct(kpi.furo)"
-        :tone="toneForKpi('furo', kpi.furo)"
-      />
+      <KpiCard label="和了率" :value="pct(kpi.agari)" :tone="toneForKpi('agari', kpi.agari)" />
+      <KpiCard label="放銃率" :value="pct(kpi.houju)" :tone="toneForKpi('houju', kpi.houju)" />
+      <KpiCard label="立直率" :value="pct(kpi.riichi)" :tone="toneForKpi('riichi', kpi.riichi)" />
+      <KpiCard label="副露率" :value="pct(kpi.furo)" :tone="toneForKpi('furo', kpi.furo)" />
       <KpiCard
         label="平均順位"
         :value="kpi.avgRank.toFixed(2)"
@@ -37,7 +21,7 @@
 
     <div class="rounded-2xl border border-border bg-surface p-4">
       <div class="mb-2 text-sm text-muted">Rate 推移（ダミーデータ + MA7）</div>
-      <div style="height: 280px" ref="chartBox"></div>
+      <div ref="chartBox" style="height: 280px"></div>
     </div>
 
     <div class="grid gap-4 md:grid-cols-2">
@@ -53,16 +37,31 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watchEffect } from "vue";
-import { useRoute, useRouter } from "vue-router";
-import { getLineOptions } from "~/utils/chartTheme";
-import { pct, toneForKpi } from "~/utils/kpi";
+import { ref, computed, onMounted, onBeforeUnmount, watchEffect } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { getLineOptions } from '~/utils/chartTheme';
+import { pct, toneForKpi } from '~/utils/kpi';
 
 const route = useRoute();
 const router = useRouter();
-const displayName = computed(() =>
-  decodeURIComponent(route.params.name as string)
-);
+const displayName = computed(() => decodeURIComponent(route.params.name as string));
+
+const url = useRequestURL();
+useHead(() => {
+  const canonical = url.origin + url.pathname;
+  const ttl = `${displayName.value} — Paiviz`;
+  const img = `/api/og?title=${encodeURIComponent(displayName.value)}&badge=Paiviz&theme=teal`;
+  return {
+    title: ttl,
+    link: [{ rel: 'canonical', href: canonical }],
+    meta: [
+      { property: 'og:title', content: ttl },
+      { property: 'og:image', content: img },
+      { name: 'twitter:title', content: ttl },
+      { name: 'twitter:image', content: img },
+    ],
+  };
+});
 
 // 最近見たに追加（composableは自動インポート）
 const { push } = useRecent();
@@ -109,7 +108,7 @@ let chart: any;
 const chartBox = ref<HTMLElement | null>(null);
 
 onMounted(async () => {
-  const echarts = await import("echarts");
+  const echarts = await import('echarts');
   if (chartBox.value) {
     chart = echarts.init(chartBox.value);
     const x = Array.from({ length: 60 }).map((_, i) => i + 1);
