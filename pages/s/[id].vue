@@ -6,9 +6,21 @@ import { getSnapshot } from '~/utils/api';
 const route = useRoute();
 const id = route.params.id as string;
 
-useHead({
-  title: `共有リンク — Paiviz`,
-  meta: [{ property: 'og:title', content: 'Paiviz 共有スナップショット' }],
+const url = useRequestURL();
+useHead(() => {
+  const canonical = url.origin + url.pathname;
+  const ttl = '共有リンク — Paiviz';
+  const img = `/api/og?title=${encodeURIComponent('共有リンク')}&badge=Paiviz&theme=teal`;
+  return {
+    title: ttl,
+    link: [{ rel: 'canonical', href: canonical }],
+    meta: [
+      { property: 'og:title', content: 'Paiviz 共有スナップショット' },
+      { property: 'og:image', content: img },
+      { name: 'twitter:title', content: 'Paiviz 共有スナップショット' },
+      { name: 'twitter:image', content: img },
+    ],
+  };
 });
 
 onMounted(async () => {

@@ -2,6 +2,7 @@
 import { h } from 'vue';
 import FavStar from '~/components/FavStar.vue';
 const { model, syncToUrl } = useRankingQuery();
+const url = useRequestURL();
 useHead(() => {
   const q = model.value;
   const period =
@@ -19,8 +20,10 @@ useHead(() => {
   const ttl = `ランキング（${q.mode} / ${q.tableType} / ${q.rule}）— Paiviz`;
   const desc = `天鳳のランキング。期間: ${period} / 卓: ${q.tableType} / ルール: ${q.rule}`;
   const img = `/api/og?title=${encodeURIComponent('ランキング')}&subtitle=${encodeURIComponent(`${q.tableType}/${q.rule}｜${period}`)}&badge=Paiviz&theme=teal`;
+  const canonical = url.origin + url.pathname;
   return {
     title: ttl,
+    link: [{ rel: 'canonical', href: canonical }],
     meta: [
       { property: 'og:title', content: ttl },
       { property: 'og:description', content: desc },
