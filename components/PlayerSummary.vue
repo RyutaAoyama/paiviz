@@ -74,16 +74,10 @@
 </template>
 
 <script setup lang="ts">
-import {
-  ref,
-  reactive,
-  computed,
-  watch,
-  onMounted,
-  onBeforeUnmount,
-} from "vue";
+import { ref, reactive, computed, watch } from "vue";
 import { getLineOptions } from "~/utils/chartTheme";
 import { pct, toneForKpi } from "~/utils/kpi";
+import { useOnVisible } from "~/composables/useOnVisible";
 
 const props = withDefaults(
   defineProps<{
@@ -129,7 +123,7 @@ const visibleRanks = computed<number[]>(() => {
 // peer側KPI（差分表示用）
 const peer = computed(() => props.peerKpi ?? null);
 
-// Rate チャート
+// Rate チャート（可視時に初期化）
 let chart: any;
 const chartBox = ref<HTMLElement | null>(null);
 async function renderRate() {
@@ -149,9 +143,9 @@ async function renderRate() {
   }
   chart.setOption(opt);
 }
-onMounted(renderRate);
-watch(() => me.rate.value, renderRate);
-onBeforeUnmount(() => {
-  chart?.dispose?.();
-});
+useOnVisible(chartBox, renderRate);
+watch(
+  () => me.rate.value,
+  () => chart && renderRate()
+);
 </script>

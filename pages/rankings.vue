@@ -11,6 +11,12 @@
         </button>
         <button
           class="rounded-lg border border-border px-2 py-1 hover:text-text"
+          @click="onExportCsv"
+        >
+          CSVエクスポート
+        </button>
+        <button
+          class="rounded-lg border border-border px-2 py-1 hover:text-text"
           @click="copyLink"
         >
           共有リンクをコピー
@@ -137,10 +143,12 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { downloadCsv } from "@/utils/csv";
 
 const route = useRoute();
 const router = useRouter();
 const { isFav } = useFavorites();
+const { push: pushToast } = useToast();
 
 // range state (mode/from/to)
 const mode = ref(String(route.query.mode ?? "this"));
@@ -290,6 +298,28 @@ function goDetail(i: number) {
 async function copyLink() {
   try {
     await navigator.clipboard.writeText(location.href);
-  } catch {}
+    pushToast("共有リンクをコピーしました", "success");
+  } catch {
+    pushToast("コピーに失敗しました", "error");
+  }
+}
+
+function onExportCsv() {
+  const header = ["rank", "name", "rate", "games"];
+  const rows = sorted.value
+    .map((r, idx) => ({
+      rank: idx + 1,
+      name: r.name,
+      rate: r.rate,
+      games: r.games,
+    }))
+    .slice(0, 500);
+  downloadCsv("paiviz_rankings.csv", rows, header, {
+    rank: "#",
+    name: "名前",
+    rate: "Rate",
+    games: "対局数",
+  });
+  pushToast("CSVをダウンロードしました", "success");
 }
 </script>

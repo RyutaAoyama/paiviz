@@ -45,6 +45,7 @@
 <script setup lang="ts">
 const route = useRoute();
 const router = useRouter();
+const { push: pushToast } = useToast();
 
 const a = ref<string>(String(route.query.a ?? "Player_A"));
 const b = ref<string>(String(route.query.b ?? "Player_B"));
@@ -70,7 +71,10 @@ const kpiB = computed(() => dataB.kpi.value);
 async function copyLink() {
   try {
     await navigator.clipboard.writeText(location.href);
-  } catch {}
+    pushToast("共有リンクをコピーしました", "success");
+  } catch {
+    pushToast("コピーに失敗しました", "error");
+  }
 }
 function swap() {
   const tmp = a.value;
