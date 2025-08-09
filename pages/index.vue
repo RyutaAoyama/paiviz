@@ -32,11 +32,11 @@
 
         <div v-else>
           <div
-            v-for="(r, i) in rowsSafe"
-            :key="r.id"
+            v-for="r in rowsSafe"
+            :key="r.name"
             class="grid grid-cols-[64px_1fr_90px_140px_90px] items-center gap-3 border-t border-border px-3 py-2"
           >
-            <div class="tabular-nums text-muted">{{ i + 1 }}</div>
+            <div class="tabular-nums text-muted">{{ r.rank }}</div>
             <div class="truncate">
               <span v-if="isFav(r.name)" class="mr-1 text-jade">★</span>
               {{ r.name }}
@@ -87,6 +87,8 @@
 </template>
 
 <script setup lang="ts">
+import { getRankingRows, type RankingRow } from '~/providers/rankings';
+
 const url = useRequestURL();
 useHead(() => {
   const canonical = url.origin + url.pathname;
@@ -108,34 +110,12 @@ useHead(() => {
   };
 });
 
-// SSRでも安全な“空配列”初期化
-type Row = {
-  id: number;
-  name: string;
-  rate: number;
-  games: number;
-  spark: number[];
-};
-
 const { isFav, list: favs } = useFavorites();
 const { recent } = useRecent();
 
-// --- ランキング抜粋（モック） ---
-// SSRで Date などの非POJOを返すと Nuxt が payload 化で警告するので、POJOのみ使用
-const rows = ref<Row[]>([]);
-onMounted(() => {
-  // クライアント側でだけ擬似データ投入（SSR時は空 → 0件表示で安全）
-  rows.value = Array.from({ length: 10 }).map((_, i) => ({
-    id: i,
-    name: `Player_${i.toString().padStart(4, '0')}`,
-    rate: Math.floor(1800 + Math.random() * 600),
-    games: Math.floor(50 + Math.random() * 300),
-    spark: Array.from({ length: 12 }, () => Math.floor(1 + Math.random() * 4)),
-  }));
-});
-
-// null セーフな派生
-const rowsSafe = computed<Row[]>(() => (Array.isArray(rows.value) ? rows.value : []));
+const baseRows = await getRankingRows({ tableType: '特上', rule: '東' });
+const rows = ref<RankingRow[]>(baseRows.slice(0, 10));
+const rowsSafe = computed<RankingRow[]>(() => (Array.isArray(rows.value) ? rows.value : []));
 const favSafe = computed<string[]>(() => (Array.isArray(favs.value) ? favs.value : []));
 const recSafe = computed<string[]>(() => (Array.isArray(recent.value) ? recent.value : []));
 

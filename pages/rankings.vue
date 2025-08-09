@@ -45,10 +45,10 @@ let worker: Worker | null = null;
 const { list: favList } = useFavorites();
 const FavStar = resolveComponent('FavStar');
 
-const recalc = (): void => {
+const recalc = async (): Promise<void> => {
   if (!worker) return;
   loading.value = true;
-  rows.value = getRankingRows(model.value);
+  rows.value = await getRankingRows(model.value);
   const sortKeys: RankRequest['sort']['keys'] = [];
   const sk = model.value.sortKey;
   const dir = model.value.sortDir;
@@ -74,14 +74,18 @@ if (process.client) {
 }
 
 onMounted(() => {
-  recalc();
+  void recalc();
 });
 
 watch(
   () => ({ ...model.value }),
-  () => recalc()
+  () => {
+    void recalc();
+  }
 );
-watch(favList, () => recalc());
+watch(favList, () => {
+  void recalc();
+});
 
 // CSV
 import { toCsv, downloadCsv } from '~/utils/csv';
