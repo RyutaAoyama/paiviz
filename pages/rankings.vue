@@ -102,7 +102,7 @@
         <div
           v-for="(row, i) in visibleRows"
           :key="row.id"
-          class="grid grid-cols-[72px_1fr_90px_160px_90px] items-center gap-3 border-b border-border row-hover"
+          class="grid grid-cols-[72px_1fr_90px_160px_90px] items-center gap-3 border-b border-border hover:outline hover:outline-1 hover:outline-[#1b2230] rounded-md"
           :class="{ 'row-selected': isSelected(startIndex + i) }"
           :style="{
             position: 'absolute',
@@ -117,7 +117,10 @@
           <div class="tabular-nums text-muted">
             <span class="pill">{{ startIndex + i + 1 }}</span>
           </div>
-          <div class="truncate">{{ row.name }}</div>
+          <div class="truncate">
+            <span v-if="isFav(row.name)" class="mr-1 text-jade">★</span>
+            {{ row.name }}
+          </div>
           <div class="tabular-nums">{{ row.rate }}</div>
           <div class="text-jade"><Sparkline :data="row.spark" /></div>
           <div class="tabular-nums text-muted">{{ row.games }}</div>
@@ -125,7 +128,8 @@
       </div>
     </div>
     <div class="text-xs text-muted">
-      ヒント: 期間・卓・ルール・ソートはURLに保存されます。
+      ヒント:
+      期間・卓・ルール・ソートはURLに保存されます。お気に入りは★でハイライト。
     </div>
   </section>
 </template>
@@ -136,6 +140,7 @@ import { useRoute, useRouter } from "vue-router";
 
 const route = useRoute();
 const router = useRouter();
+const { isFav } = useFavorites();
 
 // range state (mode/from/to)
 const mode = ref(String(route.query.mode ?? "this"));
@@ -179,7 +184,7 @@ watch(
   }
 );
 
-// sort helpers (templateから使う)
+// sort helpers
 function setSort(key: "rank" | "name" | "rate" | "games") {
   if (sort.key === key) sort.dir = sort.dir === "asc" ? "desc" : "asc";
   else {

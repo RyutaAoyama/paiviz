@@ -2,8 +2,8 @@
   <div class="relative">
     <input
       v-model="q"
-      class="w-full rounded-xl bg-[#161A20] px-4 py-2 outline-none ring-1 ring-[#242A33]"
-      placeholder="プレイヤー名/IDを検索"
+      class="w-full rounded-xl bg-[#161A20] px-4 py-2 outline-none ring-1 ring-[#242A33] focus:ring-2 focus:ring-[rgba(20,184,166,.35)]"
+      placeholder="例: nodocchi を入力して Enter"
       @keydown.enter="go"
       @focus="open = true"
       @blur="onBlur"
@@ -41,17 +41,14 @@ const suggestions = computed(() => {
 });
 
 function onBlur() {
-  // blur直後のクリック（候補選択）を拾うため、少し遅らせて閉じる
   window.setTimeout(() => {
     open.value = false;
   }, 120);
 }
-
 function go() {
   if (q.value.trim())
     navigateTo(`/player/${encodeURIComponent(q.value.trim())}`);
 }
-
 function select(n: string) {
   navigateTo(`/player/${encodeURIComponent(n)}`);
   open.value = false;

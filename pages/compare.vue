@@ -21,18 +21,16 @@
     <div class="grid gap-2 md:grid-cols-2">
       <div class="flex items-center gap-2">
         <span class="text-xs text-muted w-12">A</span>
-        <input
+        <PlayerSelect
           v-model="a"
-          class="w-full rounded-xl bg-[#161A20] px-3 py-2 ring-1 ring-border"
-          placeholder="プレイヤーA"
+          placeholder="プレイヤーA（お気に入り/最近から候補）"
         />
       </div>
       <div class="flex items-center gap-2">
         <span class="text-xs text-muted w-12">B</span>
-        <input
+        <PlayerSelect
           v-model="b"
-          class="w-full rounded-xl bg-[#161A20] px-3 py-2 ring-1 ring-border"
-          placeholder="プレイヤーB"
+          placeholder="プレイヤーB（お気に入り/最近から候補）"
         />
       </div>
     </div>

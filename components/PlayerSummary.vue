@@ -1,8 +1,13 @@
 <template>
   <section class="space-y-4">
-    <div class="flex items-center justify-between">
-      <h2 class="text-xl font-semibold truncate">{{ displayName }}</h2>
-      <StarButton :name="displayName" />
+    <div class="space-y-1">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xl font-semibold truncate">{{ displayName }}</h2>
+        <StarButton :name="displayName" />
+      </div>
+      <div class="text-xs text-muted">
+        Rate（現在値）: <span class="tabular-nums">{{ currentRate }}</span>
+      </div>
     </div>
 
     <div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
@@ -49,7 +54,10 @@
     </div>
 
     <div class="rounded-2xl border border-border bg-surface p-4">
-      <div class="mb-2 text-sm text-muted">Rate 推移（ダミーデータ + MA7）</div>
+      <div class="mb-2 flex items-center justify-between text-sm text-muted">
+        <span>Rate 推移</span>
+        <span class="text-xs">凡例: Rate / MA7</span>
+      </div>
       <div style="height: 220px" ref="chartBox"></div>
     </div>
 
@@ -97,13 +105,19 @@ const displayName = computed(() => decodeURIComponent(props.name));
 // 自データ
 const me = usePlayerData(displayName);
 
-// kpi は Ref なので、テンプレートでの型エラー回避のために reactive に写す
+// kpi は Ref なので reactive に写す
 const kpi = reactive({ agari: 0, houju: 0, riichi: 0, furo: 0, avgRank: 0 });
 watch(
   () => me.kpi.value,
   (v) => Object.assign(kpi, v),
   { immediate: true }
 );
+
+// 現在のRate
+const currentRate = computed(() => {
+  const arr = me.rate.value;
+  return arr.length ? arr[arr.length - 1] : "--";
+});
 
 // 可視範囲の着順配列
 const visibleRanks = computed<number[]>(() => {
@@ -124,9 +138,16 @@ async function renderRate() {
   if (chart) chart.dispose();
   chart = echarts.init(chartBox.value);
   const x = me.rate.value.map((_, i) => i + 1);
-  chart.setOption(
-    getLineOptions(me.rate.value, x, { maWindow: 7, showMA: true })
-  );
+  const opt: any = getLineOptions(me.rate.value, x, {
+    maWindow: 7,
+    showMA: true,
+  });
+  if (Array.isArray(opt.series)) {
+    if (opt.series[0]) opt.series[0].name = "Rate";
+    if (opt.series[1]) opt.series[1].name = "MA7";
+    opt.legend = { data: ["Rate", "MA7"], top: 0 };
+  }
+  chart.setOption(opt);
 }
 onMounted(renderRate);
 watch(() => me.rate.value, renderRate);
