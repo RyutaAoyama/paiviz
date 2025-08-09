@@ -16,6 +16,14 @@ export default defineNuxtConfig({
           name: "description",
           content: "天鳳の成績を見やすく可視化するビューア",
         },
+        // --- OG 基本 ---
+        { property: "og:site_name", content: "Paiviz" },
+        { property: "og:type", content: "website" },
+        {
+          property: "og:image",
+          content: "https://dummyimage.com/1200x630/0f1115/14b8a6&text=Paiviz",
+        },
+        { name: "twitter:card", content: "summary_large_image" },
       ],
       link: [
         { rel: "preconnect", href: "https://fonts.googleapis.com" },

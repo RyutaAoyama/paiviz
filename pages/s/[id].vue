@@ -12,6 +12,14 @@ interface SnapshotPayload {
 const route = useRoute();
 const id = route.params.id as string;
 
+useHead({
+  title: 'スナップショット読み込み — Paiviz',
+  meta: [
+    { property: 'og:title', content: 'Paiviz スナップショット' },
+    { property: 'og:description', content: '共有リンクから成績データを読み込み中' }
+  ]
+})
+
 onMounted(async () => {
   try {
     const js = await getSnapshot(id);
