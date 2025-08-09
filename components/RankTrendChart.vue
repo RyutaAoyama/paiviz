@@ -6,7 +6,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref, watch } from "vue";
+import { onMounted, onBeforeUnmount, ref, watch } from 'vue';
 
 const props = defineProps<{ ranks: number[]; showMA?: boolean }>();
 
@@ -14,10 +14,8 @@ let chart: any;
 const box = ref<HTMLElement | null>(null);
 
 function getCss(name: string) {
-  if (typeof window === "undefined") return "";
-  return getComputedStyle(document.documentElement)
-    .getPropertyValue(name)
-    .trim();
+  if (typeof window === 'undefined') return '';
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
 function ma(arr: number[], window = 9) {
@@ -26,60 +24,58 @@ function ma(arr: number[], window = 9) {
   for (let i = 0; i < arr.length; i++) {
     sum += arr[i];
     if (i >= window) sum -= arr[i - window];
-    out.push(
-      i + 1 >= window ? +(sum / Math.min(i + 1, window)).toFixed(2) : null
-    );
+    out.push(i + 1 >= window ? +(sum / Math.min(i + 1, window)).toFixed(2) : null);
   }
   return out;
 }
 
 async function render() {
-  const echarts = await import("echarts");
+  const echarts = await import('echarts');
   if (!box.value) return;
   chart = echarts.init(box.value);
   const x = props.ranks.map((_, i) => i + 1);
   const y = props.ranks;
   chart.setOption({
-    tooltip: { trigger: "axis" },
+    tooltip: { trigger: 'axis' },
     grid: { left: 36, right: 12, top: 20, bottom: 24 },
-    textStyle: { color: getCss("--muted"), fontFamily: "Inter, Noto Sans JP" },
+    textStyle: { color: getCss('--muted'), fontFamily: 'Inter, Noto Sans JP' },
     xAxis: {
-      type: "category",
+      type: 'category',
       data: x,
-      axisLabel: { color: getCss("--muted") },
-      axisLine: { lineStyle: { color: getCss("--border") } },
+      axisLabel: { color: getCss('--muted') },
+      axisLine: { lineStyle: { color: getCss('--border') } },
     },
     yAxis: {
-      type: "value",
+      type: 'value',
       min: 1,
       max: 4,
       inverse: true,
       splitNumber: 3,
       axisLabel: {
-        formatter: (v: number) => v + "位",
-        color: getCss("--muted"),
+        formatter: (v: number) => v + '位',
+        color: getCss('--muted'),
       },
-      splitLine: { lineStyle: { color: "#1B2230" } },
+      splitLine: { lineStyle: { color: '#1B2230' } },
     },
     series: [
       {
-        type: "line",
+        type: 'line',
         data: y,
         smooth: 0.2,
         showSymbol: true,
         symbolSize: 4,
-        lineStyle: { color: getCss("--jade"), width: 2 },
-        itemStyle: { color: getCss("--jade") },
+        lineStyle: { color: getCss('--jade'), width: 2 },
+        itemStyle: { color: getCss('--jade') },
         z: 2,
       },
       ...(props.showMA !== false
         ? [
             {
-              type: "line",
+              type: 'line',
               data: ma(y, 9),
               smooth: true,
               showSymbol: false,
-              lineStyle: { color: getCss("--plum"), width: 1.5, opacity: 0.9 },
+              lineStyle: { color: getCss('--plum'), width: 1.5, opacity: 0.9 },
               z: 3,
             },
           ]

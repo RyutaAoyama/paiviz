@@ -19,7 +19,13 @@
           <td class="px-3 py-2 text-right tabular-nums">{{ row.rank }}</td>
           <td class="px-3 py-2 text-right tabular-nums">{{ row.points }}</td>
           <td class="px-3 py-2 text-center">
-            <a :href="row.replay" target="_blank" rel="noopener" class="text-teal-400 hover:underline">▶ 公式</a>
+            <a
+              :href="row.replay"
+              target="_blank"
+              rel="noopener"
+              class="text-teal-400 hover:underline"
+              >▶ 公式</a
+            >
           </td>
         </tr>
       </tbody>
@@ -27,14 +33,22 @@
   </div>
 </template>
 <script setup lang="ts">
-type Row = { id:number; date:string; table:string; rule:string; rank:number; points:number; replay:string }
+type Row = {
+  id: number;
+  date: string;
+  table: string;
+  rule: string;
+  rank: number;
+  points: number;
+  replay: string;
+};
 const rows: Row[] = Array.from({ length: 20 }).map((_, i) => ({
   id: i,
-  date: `2025/08/${(i+1).toString().padStart(2,'0')}`,
-  table: ['一般','上','特上','鳳凰'][i%4] + '東南',
+  date: `2025/08/${(i + 1).toString().padStart(2, '0')}`,
+  table: ['一般', '上', '特上', '鳳凰'][i % 4] + '東南',
   rule: i % 2 ? '喰断アリ' : '喰断ナシ',
   rank: 1 + (i % 4),
-  points: 25000 + Math.floor(Math.random()*40000),
-  replay: '#'
-}))
+  points: 25000 + Math.floor(Math.random() * 40000),
+  replay: '#',
+}));
 </script>

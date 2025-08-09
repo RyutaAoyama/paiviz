@@ -5,8 +5,8 @@
   </button>
 </template>
 <script setup lang="ts">
-const props = defineProps<{ name: string }>()
-const { has, toggle: t } = useFavorites()
-const on = computed(() => has(props.name))
-const toggle = () => t(props.name)
+const props = defineProps<{ name: string }>();
+const { has, toggle: t } = useFavorites();
+const on = computed(() => has(props.name));
+const toggle = () => t(props.name);
 </script>

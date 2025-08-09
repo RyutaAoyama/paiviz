@@ -4,8 +4,7 @@
     <main
       class="container mx-auto px-4 py-6"
       :style="{
-        paddingBottom:
-          'calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px))',
+        paddingBottom: 'calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px))',
       }"
     >
       <NuxtPage />

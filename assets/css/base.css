@@ -1,4 +1,4 @@
-@import "./tokens.css";
+@import './tokens.css';
 :root {
   color-scheme: dark;
 }
@@ -10,9 +10,18 @@ body,
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: Inter, "Noto Sans JP", system-ui, -apple-system, Segoe UI, Roboto,
-    "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji",
-    "Segoe UI Symbol";
+  font-family:
+    Inter,
+    'Noto Sans JP',
+    system-ui,
+    -apple-system,
+    Segoe UI,
+    Roboto,
+    'Helvetica Neue',
+    Arial,
+    'Apple Color Emoji',
+    'Segoe UI Emoji',
+    'Segoe UI Symbol';
 }
 hr {
   border-color: var(--border);
@@ -28,7 +37,7 @@ hr {
   overflow: hidden;
 }
 .aurora::before {
-  content: "";
+  content: '';
   position: absolute;
   inset: -20%;
   background: conic-gradient(
@@ -60,11 +69,7 @@ hr {
   border: 1px solid rgba(22, 196, 184, 0.28);
 }
 .row-selected {
-  background: linear-gradient(
-    0deg,
-    rgba(22, 196, 184, 0.08),
-    rgba(22, 196, 184, 0.08)
-  );
+  background: linear-gradient(0deg, rgba(22, 196, 184, 0.08), rgba(22, 196, 184, 0.08));
 }
 .row-selected .pill {
   background: rgba(22, 196, 184, 0.2);

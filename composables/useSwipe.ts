@@ -1,4 +1,4 @@
-import { ref, onMounted, onBeforeUnmount, type Ref } from "vue";
+import { ref, onMounted, onBeforeUnmount, type Ref } from 'vue';
 
 export function useSwipe(
   target: Ref<HTMLElement | null> | HTMLElement,
@@ -25,13 +25,13 @@ export function useSwipe(
   onMounted(() => {
     const el = elRef.value instanceof HTMLElement ? elRef.value : elRef.value?.value;
     if (!el) return;
-    el.addEventListener("pointerdown", onDown);
-    el.addEventListener("pointerup", onUp);
+    el.addEventListener('pointerdown', onDown);
+    el.addEventListener('pointerup', onUp);
   });
   onBeforeUnmount(() => {
     const el = elRef.value instanceof HTMLElement ? elRef.value : elRef.value?.value;
     if (!el) return;
-    el.removeEventListener("pointerdown", onDown);
-    el.removeEventListener("pointerup", onUp);
+    el.removeEventListener('pointerdown', onDown);
+    el.removeEventListener('pointerup', onUp);
   });
 }
