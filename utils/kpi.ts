@@ -1,33 +1,37 @@
-export type Tone = 'good' | 'bad' | 'neutral'
+export type Tone = "good" | "bad" | "neutral";
 
-export interface KpiThresholds {
-  agari: { good: number }        // 和了率 >= good → good
-  houju: { bad: number }         // 放銃率 >= bad → bad
-  riichi: { good: number }
-  furo: { good: number }
-  avgRank: { good: number }      // 平均順位 <= good → good, >= bad → bad (bad optional)
-  avgPoint?: { good?: number, bad?: number }
-}
-
-export const defaultThresholds: KpiThresholds = {
-  agari: { good: 0.23 },
-  houju: { bad: 0.12 },
-  riichi: { good: 0.18 },
-  furo: { good: 0.30 },
-  avgRank: { good: 2.5 }
-}
-
-export function toneForKpi(key: keyof KpiThresholds, value: number, th = defaultThresholds): Tone {
-  switch (key) {
-    case 'agari': return value >= th.agari.good ? 'good' : 'neutral'
-    case 'houju': return value >= th.houju.bad ? 'bad' : 'neutral'
-    case 'riichi': return value >= th.riichi.good ? 'good' : 'neutral'
-    case 'furo': return value >= th.furo.good ? 'good' : 'neutral'
-    case 'avgRank': return value <= th.avgRank.good ? 'good' : (value >= 3.0 ? 'bad' : 'neutral')
-    default: return 'neutral'
+export function toneForKpi(
+  key: string,
+  value: number,
+  th = {
+    agari: { good: 0.24, bad: 0.18 },
+    houju: { good: 0.09, bad: 0.13 },
+    riichi: { good: 0.2, bad: 0.12 },
+    furo: { good: 0.4, bad: 0.2 },
+    avgRank: { good: 2.25, bad: 2.75 },
   }
+): Tone {
+  const rev = new Set(["houju", "avgRank"]);
+  const t = (th as any)[key];
+  if (!t) return "neutral";
+  if (rev.has(key)) {
+    if (value < t.good) return "good";
+    if (value > t.bad) return "bad";
+  } else {
+    if (value > t.good) return "good";
+    if (value < t.bad) return "bad";
+  }
+  return "neutral";
+}
+
+export function toneForDiff(key: string, delta: number): Tone {
+  if (Math.abs(delta) < 1e-9) return "neutral";
+  const rev = new Set(["houju", "avgRank"]);
+  const positiveIsGood = !rev.has(key);
+  const good = delta > 0 ? positiveIsGood : !positiveIsGood;
+  return good ? "good" : "bad";
 }
 
 export function pct(n: number, digits = 1) {
-  return (n * 100).toFixed(digits) + '%'
+  return (n * 100).toFixed(digits) + "%";
 }

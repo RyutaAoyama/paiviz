@@ -1,5 +1,5 @@
 <template>
-  <section class="space-y-4">
+  <section ref="root" class="space-y-4">
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-bold">プレイヤー比較</h1>
       <div class="flex flex-wrap items-center gap-2 text-sm text-muted">
@@ -45,6 +45,7 @@
 
 <script setup lang="ts">
 import { createShareLink } from "@/utils/share";
+import { useSwipe } from "~/composables/useSwipe";
 
 const route = useRoute();
 const router = useRouter();
@@ -53,6 +54,7 @@ const { push: pushToast } = useToast();
 const a = ref<string>(String(route.query.a ?? "Player_A"));
 const b = ref<string>(String(route.query.b ?? "Player_B"));
 const rwindow = ref<number>(Number(route.query.rwindow ?? 120) || 120);
+const root = ref<HTMLElement | null>(null);
 
 watch([a, b, rwindow], () => {
   router.replace({
@@ -88,8 +90,13 @@ const swap = (): void => {
   const tmp = a.value;
   a.value = b.value;
   b.value = tmp;
+  router.replace({
+    query: { ...route.query, a: a.value, b: b.value, rwindow: String(rwindow.value) },
+  });
   pushToast("A/Bを入れ替えました", "success");
 };
+
+useSwipe(root, { onSwipeLeft: swap, onSwipeRight: swap });
 
 onMounted(() => {
   const handler = (e: KeyboardEvent) => {

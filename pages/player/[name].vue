@@ -42,7 +42,7 @@
 
     <div class="grid gap-4 md:grid-cols-2">
       <RankTrendChart :ranks="visibleRanks" />
-      <RankPieChart :ranks="visibleRanks" />
+      <RankDonut :counts="rankCounts" />
     </div>
 
     <div>
@@ -97,6 +97,12 @@ const ranks = ref<number[]>(
 const visibleRanks = computed(() => {
   const n = rwindow.value >= 9999 ? ranks.value.length : rwindow.value;
   return ranks.value.slice(-n);
+});
+
+const rankCounts = computed(() => {
+  const c = [0, 0, 0, 0];
+  for (const r of visibleRanks.value) if (r >= 1 && r <= 4) c[r - 1]++;
+  return c;
 });
 
 let chart: any;
