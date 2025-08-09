@@ -1,92 +1,112 @@
 <script setup lang="ts">
-import { h } from "vue";
-import FavStar from "~/components/FavStar.vue";
-const { model } = useRankingQuery();
+import { h } from 'vue';
+import FavStar from '~/components/FavStar.vue';
+const { model, syncToUrl } = useRankingQuery();
 useHead(() => {
   const q = model.value;
+  const period =
+    q.mode === 'this'
+      ? '今月'
+      : q.mode === 'prev'
+        ? '先月'
+        : q.mode === 'last30d'
+          ? '直近30日'
+          : q.mode === 'last90d'
+            ? '直近90日'
+            : q.mode === 'custom' && q.from && q.to
+              ? `${q.from}〜${q.to}`
+              : '期間指定なし';
   const ttl = `ランキング（${q.mode} / ${q.tableType} / ${q.rule}）— Paiviz`;
-  const desc = `天鳳のランキング。期間: ${q.mode}${
-    q.mode === "custom" && q.from && q.to ? `（${q.from}〜${q.to}）` : ""
-  } / 卓: ${q.tableType} / ルール: ${q.rule}`;
+  const desc = `天鳳のランキング。期間: ${period} / 卓: ${q.tableType} / ルール: ${q.rule}`;
+  const img = `/api/og?title=${encodeURIComponent('ランキング')}&subtitle=${encodeURIComponent(`${q.tableType}/${q.rule}｜${period}`)}&badge=Paiviz&theme=teal`;
   return {
     title: ttl,
     meta: [
-      { property: "og:title", content: ttl },
-      { property: "og:description", content: desc },
-      { name: "twitter:title", content: ttl },
-      { name: "twitter:description", content: desc },
-      { name: "description", content: desc },
+      { property: 'og:title', content: ttl },
+      { property: 'og:description', content: desc },
+      { property: 'og:image', content: img },
+      { name: 'twitter:title', content: ttl },
+      { name: 'twitter:description', content: desc },
+      { name: 'twitter:image', content: img },
+      { name: 'description', content: desc },
     ],
   };
 });
 
 // TODO: 実データに差し替え。今はモック行（安定動作確認用）
-type Row = {
-  rank: number;
-  name: string;
-  rate: number;
-  games: number;
-  trend: string;
+type Row = { rank: number; name: string; rate: number; games: number; trend: string };
+const rows = ref<Row[]>([]);
+const loading = ref(true);
+const load = (): void => {
+  loading.value = true;
+  setTimeout(() => {
+    rows.value = Array.from({ length: 500 }, (_, i) => ({
+      rank: i + 1,
+      name: `Player_${(i + 1).toString().padStart(3, '0')}`,
+      rate: 2000 + Math.round(Math.random() * 800),
+      games: 50 + Math.round(Math.random() * 200),
+      trend: '↗︎',
+    }));
+    loading.value = false;
+  }, 300);
 };
-const allRows = ref<Row[]>(
-  Array.from({ length: 500 }, (_, i) => ({
-    rank: i + 1,
-    name: `Player_${(i + 1).toString().padStart(3, "0")}`,
-    rate: 2000 + Math.round(Math.random() * 800),
-    games: 50 + Math.round(Math.random() * 200),
-    trend: "↗︎",
-  }))
+watch(
+  () => ({ ...model.value }),
+  () => load()
 );
+onMounted(load);
 
 // お気に入りフィルタ
 const { has } = useFavorites();
 const filtered = computed(() => {
-  let rows = allRows.value;
-  if (model.value.favOnly) rows = rows.filter((r) => has(r.name));
-  // ルール/卓など他フィルタはここに適用
-  // ソート
+  let r = rows.value;
+  if (model.value.favOnly) r = r.filter((row) => has(row.name));
   const { sortKey, sortDir } = model.value;
   const k = sortKey;
-  rows = rows.slice().sort((a: any, b: any) => {
+  r = r.slice().sort((a: any, b: any) => {
     const va = a[k],
       vb = b[k];
-    return sortDir === "asc" ? (va > vb ? 1 : -1) : va < vb ? 1 : -1;
+    return sortDir === 'asc' ? (va > vb ? 1 : -1) : va < vb ? 1 : -1;
   });
-  // rankを振り直す（表示用）
-  rows.forEach((r, idx) => (r.rank = idx + 1));
-  return rows;
+  r.forEach((row, idx) => (row.rank = idx + 1));
+  return r;
 });
 
 // CSV
-import { toCsv, downloadCsv } from "~/utils/csv";
+import { toCsv, downloadCsv } from '~/utils/csv';
 const exportCsv = (): void => {
   const csv = toCsv(filtered.value, [
-    { key: "rank", label: "#" },
-    { key: "name", label: "名前" },
-    { key: "rate", label: "Rate" },
-    { key: "games", label: "対局数" },
+    { key: 'rank', label: '#' },
+    { key: 'name', label: '名前' },
+    { key: 'rate', label: 'Rate' },
+    { key: 'games', label: '対局数' },
   ]);
   const q = model.value;
-  const ymd = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-  downloadCsv(
-    `paiviz_rankings_${ymd}_${q.mode}_${q.tableType}_${q.rule}.csv`,
-    csv
-  );
+  const ymd = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  downloadCsv(`paiviz_rankings_${ymd}_${q.mode}_${q.tableType}_${q.rule}.csv`, csv);
 };
 
 // テーブル列定義
+const jumpThis = (): void => {
+  model.value.mode = 'this';
+  syncToUrl();
+};
+const jumpLast30 = (): void => {
+  model.value.mode = 'last30d';
+  syncToUrl();
+};
+
 const columns = [
   {
-    key: "fav",
-    label: "",
-    width: "72px",
-    render: (p: any) =>
-      h("div", { class: "text-xs" }, h(FavStar, { name: p.row.name })),
+    key: 'fav',
+    label: '',
+    width: '72px',
+    render: (p: any) => h('div', { class: 'text-xs' }, h(FavStar, { name: p.row.name })),
   },
-  { key: "rank", label: "#", width: "64px" },
-  { key: "name", label: "名前", width: "1fr" },
-  { key: "rate", label: "Rate", width: "120px" },
-  { key: "games", label: "対局数", width: "120px" },
+  { key: 'rank', label: '#', width: '64px' },
+  { key: 'name', label: '名前', width: '1fr' },
+  { key: 'rate', label: 'Rate', width: '120px' },
+  { key: 'games', label: '対局数', width: '120px' },
 ];
 </script>
 
@@ -98,22 +118,32 @@ const columns = [
 
     <div class="flex items-center gap-2">
       <button
-        class="rounded-lg bg-[#0F1115] px-3 py-2 ring-1 ring-[#242A33] text-sm"
+        class="rounded-lg bg-[#0F1115] px-3 py-2 text-sm ring-1 ring-[#242A33]"
         @click="exportCsv"
       >
         CSVエクスポート
       </button>
-      <button
-        class="rounded-lg bg-[#0F1115] px-3 py-2 ring-1 ring-[#242A33] text-sm"
-      >
+      <button class="rounded-lg bg-[#0F1115] px-3 py-2 text-sm ring-1 ring-[#242A33]">
         共有リンク作成
       </button>
-      <div class="ml-auto text-xs text-gray-400">
-        表示: {{ filtered.length }} 件
+      <div class="ml-auto text-xs text-gray-400">表示: {{ filtered.length }} 件</div>
+    </div>
+    <div v-if="loading" class="space-y-2">
+      <div v-for="i in 5" :key="i" class="h-10 animate-pulse rounded bg-[#161A20]"></div>
+    </div>
+    <div v-else-if="!filtered.length" class="space-y-4 text-center">
+      <p class="text-sm text-gray-400">ランキングが見つかりません</p>
+      <div class="flex justify-center gap-2">
+        <button class="rounded-lg bg-teal-600 px-3 py-2 text-sm text-white" @click="jumpThis">
+          今月
+        </button>
+        <button class="rounded-lg bg-teal-600 px-3 py-2 text-sm text-white" @click="jumpLast30">
+          直近30日
+        </button>
       </div>
     </div>
-
     <VirtualTable
+      v-else
       :rows="filtered"
       :columns="columns"
       :height="520"
