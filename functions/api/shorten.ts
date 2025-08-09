@@ -15,15 +15,18 @@ export const onRequestPost: PagesFunction<{ PAIVIZ_LINKS: KVNamespace }> = async
     const raw = await request.text();
     if (raw.length > 8_000) return json({ error: 'payload_too_large' }, 413);
 
-    let body: any;
+    let body: unknown;
     try {
       body = JSON.parse(raw);
     } catch {
       return json({ error: 'invalid_json' }, 400);
     }
 
-    const kind = typeof body?.kind === 'string' ? body.kind : 'rankings';
-    const data = body?.data;
+    const kind =
+      typeof (body as { kind?: string } | null | undefined)?.kind === 'string'
+        ? (body as { kind?: string }).kind!
+        : 'rankings';
+    const data = (body as { data?: unknown } | null | undefined)?.data;
     if (!data || typeof data !== 'object') return json({ error: 'invalid_data' }, 400);
 
     const allowedKeys = [
@@ -40,8 +43,9 @@ export const onRequestPost: PagesFunction<{ PAIVIZ_LINKS: KVNamespace }> = async
       'b',
       'rwindow',
     ];
-    const clean: Record<string, any> = {};
-    for (const k of allowedKeys) if (k in data) clean[k] = data[k];
+    const clean: Record<string, unknown> = {};
+    for (const k of allowedKeys)
+      if (k in (data as Record<string, unknown>)) clean[k] = (data as Record<string, unknown>)[k];
 
     const payload = { v: 1, kind, data: clean, createdAt: Date.now() };
 
@@ -78,7 +82,7 @@ export const onRequestOptions: PagesFunction = async () =>
     },
   });
 
-function json(data: any, status = 200) {
+function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: {

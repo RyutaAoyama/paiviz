@@ -14,7 +14,10 @@ export const onRequestPost: PagesFunction<TurnstileEnv> = async ({ request, env 
     method: 'POST',
     body: form,
   });
-  const js = (await r.json().catch(() => ({}) as unknown)) as { success?: boolean } | unknown;
-  const ok = typeof (js as any)?.success === 'boolean' ? !!(js as any).success : false;
+  const js = (await r.json().catch(() => ({}) as unknown)) as unknown;
+  const ok =
+    typeof (js as { success?: boolean } | null | undefined)?.success === 'boolean'
+      ? !!(js as { success?: boolean }).success
+      : false;
   return new Response(JSON.stringify({ ok }), { headers: { 'content-type': 'application/json' } });
 };

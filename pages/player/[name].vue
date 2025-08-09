@@ -93,12 +93,12 @@ useHead(() => {
 
 const loading = ref(true);
 const profile = ref<PlayerProfile | null>(null);
-const { push } = useRecent();
+const { addRecent } = useRecent();
 
 onMounted(async () => {
   try {
     profile.value = await getPlayerProfile(displayName.value);
-    push(displayName.value);
+    addRecent(displayName.value);
   } catch {
     profile.value = null;
   } finally {

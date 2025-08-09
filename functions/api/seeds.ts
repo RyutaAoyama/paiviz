@@ -27,14 +27,19 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const body = (await request.json().catch(() => ({}) as unknown)) as
     | { admin?: string; names?: unknown[]; name?: unknown }
-    | unknown;
-  const admin = typeof (body as any)?.admin === 'string' ? (body as any).admin : '';
+    | Record<string, unknown>;
+  const admin =
+    typeof (body as Record<string, unknown>)?.admin === 'string'
+      ? (body as Record<string, unknown>).admin
+      : '';
   if (admin !== env.ADMIN_TOKEN) return new Response('forbidden', { status: 403 });
   let names: string[] = [];
-  if (Array.isArray((body as any)?.names))
-    names = ((body as any).names as unknown[]).map((n) => String(n || '').trim()).filter(Boolean);
+  if (Array.isArray((body as Record<string, unknown>)?.names))
+    names = ((body as Record<string, unknown>).names as unknown[])
+      .map((n) => String(n || '').trim())
+      .filter(Boolean);
   else {
-    const name = String((body as any)?.name || '').trim();
+    const name = String((body as Record<string, unknown>)?.name || '').trim();
     if (name) names = [name];
   }
   if (!names.length) return new Response('bad request', { status: 400 });
@@ -49,10 +54,13 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 export const onRequestDelete: PagesFunction<Env> = async ({ request, env }) => {
   const body = (await request.json().catch(() => ({}) as unknown)) as
     | { admin?: string; name?: unknown }
-    | unknown;
-  const admin = typeof (body as any)?.admin === 'string' ? (body as any).admin : '';
+    | Record<string, unknown>;
+  const admin =
+    typeof (body as Record<string, unknown>)?.admin === 'string'
+      ? (body as Record<string, unknown>).admin
+      : '';
   if (admin !== env.ADMIN_TOKEN) return new Response('forbidden', { status: 403 });
-  const name = String((body as any)?.name || '').trim();
+  const name = String((body as Record<string, unknown>)?.name || '').trim();
   const list = (await getList(env.PAIVIZ_LINKS)).filter((n) => n !== name);
   await setList(env.PAIVIZ_LINKS, list);
   return new Response(JSON.stringify({ ok: true }), {

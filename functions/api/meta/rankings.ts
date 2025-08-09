@@ -14,7 +14,7 @@ export const onRequestGet: PagesFunction<{ PAIVIZ_LINKS: KVNamespace }> = async 
   return json(meta, 200, 120);
 };
 
-function json(data: any, status = 200, ttl = 0) {
+function json(data: unknown, status = 200, ttl = 0) {
   const h: Record<string, string> = {
     'content-type': 'application/json; charset=utf-8',
     'Access-Control-Allow-Origin': '*',

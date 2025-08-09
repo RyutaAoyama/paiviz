@@ -67,7 +67,7 @@ export const onRequestGet: PagesFunction<{ PAIVIZ_LINKS: KVNamespace }> = async 
 function normalize(s: string) {
   return s.toLowerCase();
 }
-function json(data: any, status = 200, ttlSec = 0) {
+function json(data: unknown, status = 200, ttlSec = 0) {
   const h: Record<string, string> = {
     'content-type': 'application/json; charset=utf-8',
     'Access-Control-Allow-Origin': '*',
