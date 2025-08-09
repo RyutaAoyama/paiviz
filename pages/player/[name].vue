@@ -4,7 +4,6 @@
       <h1 class="text-2xl font-bold">{{ displayName }}</h1>
       <StarButton :name="displayName" />
     </div>
-
     <div v-if="loading" class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
       <SkeletonCard v-for="i in 5" :key="i" />
     </div>
@@ -42,19 +41,15 @@
           :tone="toneForKpi('avgRank', profile.kpi.avgRank)"
         />
       </div>
-
       <AdSlot type="mid" />
-
       <div class="rounded-2xl border border-border bg-surface p-4">
         <div class="mb-2 text-sm text-muted">Rate 推移</div>
         <div ref="chartBox" style="height: 280px"></div>
       </div>
-
       <div class="grid gap-4 md:grid-cols-2">
         <RankTrendChart :ranks="visibleRanks" />
         <RankDonut :counts="rankCounts" />
       </div>
-
       <div>
         <div class="mb-2 text-sm text-muted">直近20対局</div>
         <MatchTable :rows="profile.matches" />
