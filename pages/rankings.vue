@@ -3,54 +3,19 @@
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-bold">ランキング</h1>
       <div class="hidden md:flex items-center gap-2 text-sm text-muted">
+        <div class="rounded-md border border-border px-2 py-1">
+          表示: {{ visibleRows.length }} / {{ sorted.length }}
+        </div>
         <button
           class="rounded-lg border border-border px-2 py-1 hover:text-text"
           @click="toggleDense"
         >
           密度: {{ dense ? "凝縮" : "快適" }}
         </button>
-        <button
-          class="rounded-lg border border-border px-2 py-1 hover:text-text"
-          @click="onExportCsv"
-        >
-          CSVエクスポート
-        </button>
-        <button
-          class="rounded-lg border border-border px-2 py-1 hover:text-text"
-          @click="copyLink"
-        >
-          共有リンクをコピー
-        </button>
       </div>
     </div>
 
-    <div class="grid grid-cols-1 gap-2 md:grid-cols-[1fr_1fr_1fr_auto]">
-      <DateRangePicker @update="onRange" />
-      <select
-        v-model="tableType"
-        class="rounded-xl bg-surface px-3 py-2 ring-1 ring-border"
-      >
-        <option>一般</option>
-        <option>上</option>
-        <option>特上</option>
-        <option>鳳凰</option>
-      </select>
-      <select
-        v-model="rule"
-        class="rounded-xl bg-surface px-3 py-2 ring-1 ring-border"
-      >
-        <option>東南</option>
-        <option>東</option>
-      </select>
-      <select
-        v-model="sort.key"
-        class="rounded-xl bg-surface px-3 py-2 ring-1 ring-border"
-      >
-        <option value="rate">Rate</option>
-        <option value="games">対局数</option>
-        <option value="name">名前</option>
-      </select>
-    </div>
+    <FilterChips v-model="chipModel" @openDrawer="drawerOpen = true" />
 
     <SkeletonTable
       v-if="loading"
@@ -108,7 +73,7 @@
         <div
           v-for="(row, i) in visibleRows"
           :key="row.id"
-          class="grid grid-cols-[72px_1fr_90px_160px_90px] items-center gap-3 border-b border-border hover:outline hover:outline-1 hover:outline-[#1b2230] rounded-md"
+          class="grid grid-cols-[72px_1fr_90px_160px_90px] items-center gap-3 border-b border-border hover:outline hover:outline-1 hover:outline-[#1b2230] rounded-md active:bg-[#0c1218]"
           :class="{ 'row-selected': isSelected(startIndex + i) }"
           :style="{
             position: 'absolute',
@@ -133,9 +98,17 @@
         </div>
       </div>
     </div>
+
+    <FilterDrawer
+      v-model:open="drawerOpen"
+      @range="onRange"
+      @exportCsv="onExportCsv"
+      @share="copyLink"
+    />
+
     <div class="text-xs text-muted">
       ヒント:
-      期間・卓・ルール・ソートはURLに保存されます。お気に入りは★でハイライト。
+      フィルタはURLに保存されます。スマホでは下部ナビから主要ページに素早く移動できます。
     </div>
   </section>
 </template>
@@ -143,36 +116,67 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { downloadCsv } from "@/utils/csv";
+import { downloadCsv } from "~/utils/csv";
+
+/* --- ここから型とガード（親でナローイング） --- */
+type Mode = "this" | "prev" | "last30d" | "last90d" | "custom";
+type Table = "一般" | "上" | "特上" | "鳳凰";
+type Rule = "東南" | "東";
+type SortKey = "rank" | "rate" | "games" | "name";
+
+const MODES: readonly Mode[] = ["this", "prev", "last30d", "last90d", "custom"];
+const TABLES: readonly Table[] = ["一般", "上", "特上", "鳳凰"];
+const RULES: readonly Rule[] = ["東南", "東"];
+const SORTS: readonly SortKey[] = ["rank", "rate", "games", "name"];
+
+const asMode = (v: any): Mode => (MODES.includes(v) ? (v as Mode) : "this");
+const asTable = (v: any): Table => (TABLES.includes(v) ? (v as Table) : "特上");
+const asRule = (v: any): Rule => (RULES.includes(v) ? (v as Rule) : "東");
+const asSortKey = (v: any): SortKey =>
+  SORTS.includes(v) ? (v as SortKey) : "rate";
+/* --- ここまで --- */
 
 const route = useRoute();
 const router = useRouter();
 const { isFav } = useFavorites();
 const { push: pushToast } = useToast();
 
-// range state (mode/from/to)
-const mode = ref(String(route.query.mode ?? "this"));
+// --- URLと同期するステート（Union型で保持） ---
+const mode = ref<Mode>(asMode(route.query.mode));
 const from = ref(String(route.query.from ?? ""));
 const to = ref(String(route.query.to ?? ""));
 
-function onRange(p: { mode: string; from: string; to: string }) {
-  mode.value = p.mode;
-  from.value = p.from;
-  to.value = p.to;
-}
+const tableType = ref<Table>(asTable(route.query.tableType));
+const rule = ref<Rule>(asRule(route.query.rule));
+const dense = ref(route.query.dense === "true");
 
-// other filters
-const tableType = ref(route.query.tableType?.toString() || "特上");
-const rule = ref(route.query.rule?.toString() || "東");
-const dense = ref(route.query.dense === "true" ? true : false);
-
-const sort = reactive<{
-  key: "rank" | "name" | "rate" | "games";
-  dir: "asc" | "desc";
-}>({
-  key: (route.query.sortKey?.toString() as any) || "rate",
-  dir: (route.query.sortDir?.toString() as any) || "desc",
+const sort = reactive<{ key: SortKey; dir: "asc" | "desc" }>({
+  key: asSortKey(route.query.sortKey),
+  dir: route.query.sortDir === "asc" ? "asc" : "desc",
 });
+
+// FilterChips の v-model と揃う型で get/set
+const chipModel = computed<{
+  mode: Mode;
+  tableType: Table;
+  rule: Rule;
+  sortKey: SortKey;
+}>({
+  get: () => ({
+    mode: mode.value,
+    tableType: tableType.value,
+    rule: rule.value,
+    sortKey: sort.key,
+  }),
+  set: (v) => {
+    mode.value = v.mode;
+    tableType.value = v.tableType;
+    rule.value = v.rule;
+    sort.key = v.sortKey;
+  },
+});
+
+// URL更新
 watch(
   [mode, from, to, tableType, rule, dense, () => sort.key, () => sort.dir],
   () => {
@@ -192,30 +196,37 @@ watch(
   }
 );
 
-// sort helpers
-function setSort(key: "rank" | "name" | "rate" | "games") {
+// ドロワーからの期間更新
+function onRange(p: { mode: string; from: string; to: string }) {
+  mode.value = asMode(p.mode); // ← 既存の asMode() を使って union にナロー
+  from.value = p.from;
+  to.value = p.to;
+}
+
+// 並び替え
+function setSort(key: SortKey) {
   if (sort.key === key) sort.dir = sort.dir === "asc" ? "desc" : "asc";
   else {
     sort.key = key;
     sort.dir = key === "name" ? "asc" : "desc";
   }
 }
-function aria(k: string) {
+function aria(k: SortKey | "rank") {
   return sort.key === k
     ? sort.dir === "asc"
       ? "ascending"
       : "descending"
     : "none";
 }
-function icon(k: string): "asc" | "desc" | "none" {
+function icon(k: SortKey | "rank") {
   return sort.key === k ? sort.dir : "none";
 }
 
-// mock loading skeleton
+// ローディング（モック）
 const loading = ref(true);
-onMounted(() => setTimeout(() => (loading.value = false), 300));
+onMounted(() => setTimeout(() => (loading.value = false), 250));
 
-// virtual list & sort
+// 仮想リスト & ソート（rankはそのまま順序/逆順）
 const rowHeight = computed(() => (dense.value ? 40 : 48));
 const total = 1000;
 const data = Array.from({ length: total }).map((_, i) => ({
@@ -229,12 +240,13 @@ const data = Array.from({ length: total }).map((_, i) => ({
 const sorted = computed(() => {
   const base = [...data];
   const dir = sort.dir === "asc" ? 1 : -1;
+  if (sort.key === "rank") return dir === 1 ? base : base.reverse();
   if (sort.key === "name")
     return base.sort((a, b) => a.name.localeCompare(b.name) * dir);
   if (sort.key === "games")
     return base.sort((a, b) => (a.games - b.games) * dir);
   if (sort.key === "rate") return base.sort((a, b) => (a.rate - b.rate) * dir);
-  return base.sort((a, b) => b.rate - a.rate);
+  return base;
 });
 
 const viewport = ref<HTMLElement | null>(null);
@@ -295,6 +307,7 @@ function goDetail(i: number) {
   if (row) navigateTo(`/player/${encodeURIComponent(row.name)}`);
 }
 
+// 共有 & CSV
 async function copyLink() {
   try {
     await navigator.clipboard.writeText(location.href);
@@ -303,7 +316,6 @@ async function copyLink() {
     pushToast("コピーに失敗しました", "error");
   }
 }
-
 function onExportCsv() {
   const header = ["rank", "name", "rate", "games"];
   const rows = sorted.value
@@ -322,4 +334,6 @@ function onExportCsv() {
   });
   pushToast("CSVをダウンロードしました", "success");
 }
+
+const drawerOpen = ref(false);
 </script>
