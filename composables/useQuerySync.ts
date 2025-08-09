@@ -16,18 +16,13 @@ export function useQuerySync<T extends Schema>(state: T, keys: (keyof T)[]) {
   for (const k of keys) {
     const qv = route.query[k as string];
     if (qv != null) {
-      // @ts-expect-error: accept string or string[] and take last value
       const v = Array.isArray(qv) ? qv[qv.length - 1] : qv;
       if (typeof state[k] === 'number') {
-        // @ts-expect-error: coerce query string into number when target is number-like
         const num = Number(v);
-        // @ts-expect-error: assign parsed number to state with loose typing
         if (!Number.isNaN(num)) state[k] = num as any;
       } else if (typeof state[k] === 'boolean') {
-        // @ts-expect-error: coerce query string into boolean when target is boolean-like
         state[k] = (v === '1' || v === 'true') as any;
       } else {
-        // @ts-expect-error: coerce query value into string for string-like target
         state[k] = String(v) as any;
       }
     }
