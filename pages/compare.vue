@@ -1,6 +1,16 @@
 <template>
   <section ref="wrap" class="space-y-4">
-    <h1 class="text-2xl font-bold">比較</h1>
+    <div class="flex items-center justify-between">
+      <h1 class="text-2xl font-bold">比較</h1>
+      <button class="rounded-lg bg-teal-600 px-3 py-2 text-sm text-white" @click="share">
+        共有
+      </button>
+    </div>
+
+    <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
+      <PlayerSelect ref="aRef" v-model="aInput" placeholder="A のプレイヤー" />
+      <PlayerSelect ref="bRef" v-model="bInput" placeholder="B のプレイヤー" />
+    </div>
 
     <div v-if="loading" class="grid grid-cols-1 gap-4 md:grid-cols-2">
       <div v-for="i in 2" :key="i" class="rounded-2xl border border-[#242A33] bg-[#161A20] p-4">
@@ -34,27 +44,35 @@
           <div class="w-full shrink-0 pr-2">
             <div class="rounded-2xl border border-[#242A33] bg-[#161A20] p-4">
               <h2 class="mb-2 font-semibold">A</h2>
+              <div class="mb-4 flex items-center gap-4">
+                <RankSparkline class="flex-1" :ranks="a.ranks" />
+                <RankDonutMini :dist="a.dist" />
+              </div>
               <div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
                 <KpiCard
                   label="和了率"
-                  :value="pct(a.agari)"
-                  :tone="toneForKpi('agari', a.agari)"
+                  :value="pct(a.kpi.agari)"
+                  :tone="toneForKpi('agari', a.kpi.agari)"
                 />
                 <KpiCard
                   label="放銃率"
-                  :value="pct(a.houju)"
-                  :tone="toneForKpi('houju', a.houju)"
+                  :value="pct(a.kpi.houju)"
+                  :tone="toneForKpi('houju', a.kpi.houju)"
                 />
                 <KpiCard
                   label="立直率"
-                  :value="pct(a.riichi)"
-                  :tone="toneForKpi('riichi', a.riichi)"
+                  :value="pct(a.kpi.riichi)"
+                  :tone="toneForKpi('riichi', a.kpi.riichi)"
                 />
-                <KpiCard label="副露率" :value="pct(a.furo)" :tone="toneForKpi('furo', a.furo)" />
+                <KpiCard
+                  label="副露率"
+                  :value="pct(a.kpi.furo)"
+                  :tone="toneForKpi('furo', a.kpi.furo)"
+                />
                 <KpiCard
                   label="平均順位"
-                  :value="a.avgRank.toFixed(2)"
-                  :tone="toneForKpi('avgRank', a.avgRank)"
+                  :value="a.kpi.avgRank.toFixed(2)"
+                  :tone="toneForKpi('avgRank', a.kpi.avgRank)"
                 />
               </div>
             </div>
@@ -63,27 +81,35 @@
           <div class="w-full shrink-0 pl-2">
             <div class="rounded-2xl border border-[#242A33] bg-[#161A20] p-4">
               <h2 class="mb-2 font-semibold">B</h2>
+              <div class="mb-4 flex items-center gap-4">
+                <RankSparkline class="flex-1" :ranks="b.ranks" />
+                <RankDonutMini :dist="b.dist" />
+              </div>
               <div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
                 <KpiCard
                   label="和了率"
-                  :value="pct(b.agari)"
-                  :tone="toneForKpi('agari', b.agari)"
+                  :value="pct(b.kpi.agari)"
+                  :tone="toneForKpi('agari', b.kpi.agari)"
                 />
                 <KpiCard
                   label="放銃率"
-                  :value="pct(b.houju)"
-                  :tone="toneForKpi('houju', b.houju)"
+                  :value="pct(b.kpi.houju)"
+                  :tone="toneForKpi('houju', b.kpi.houju)"
                 />
                 <KpiCard
                   label="立直率"
-                  :value="pct(b.riichi)"
-                  :tone="toneForKpi('riichi', b.riichi)"
+                  :value="pct(b.kpi.riichi)"
+                  :tone="toneForKpi('riichi', b.kpi.riichi)"
                 />
-                <KpiCard label="副露率" :value="pct(b.furo)" :tone="toneForKpi('furo', b.furo)" />
+                <KpiCard
+                  label="副露率"
+                  :value="pct(b.kpi.furo)"
+                  :tone="toneForKpi('furo', b.kpi.furo)"
+                />
                 <KpiCard
                   label="平均順位"
-                  :value="b.avgRank.toFixed(2)"
-                  :tone="toneForKpi('avgRank', b.avgRank)"
+                  :value="b.kpi.avgRank.toFixed(2)"
+                  :tone="toneForKpi('avgRank', b.kpi.avgRank)"
                 />
               </div>
             </div>
@@ -105,7 +131,7 @@
         <div class="text-xs text-gray-400">現在: {{ active === 0 ? 'A' : 'B' }} を表示中</div>
       </div>
 
-      <KpiDiffTable :a="a" :b="b" class="mt-4" />
+      <KpiDiffTable :a="a.kpi" :b="b.kpi" :highlight="highlight" class="mt-4" />
     </template>
   </section>
 </template>
@@ -118,6 +144,24 @@ const wrap = ref<HTMLElement | null>(null);
 const active = ref(0);
 const offset = computed(() => (active.value === 0 ? 0 : -100));
 import { pct, toneForKpi } from '~/utils/kpi';
+const toast = useToast();
+const aRef = ref<any>(null);
+const bRef = ref<any>(null);
+const aInput = ref('');
+const bInput = ref('');
+const highlight = ref(true);
+
+watch(
+  () => route.query,
+  () => {
+    aInput.value = String(route.query.a || '');
+    bInput.value = String(route.query.b || '');
+  },
+  { immediate: true }
+);
+
+watch(aInput, (v) => router.replace({ query: { ...route.query, a: v } }));
+watch(bInput, (v) => router.replace({ query: { ...route.query, b: v } }));
 useHead(() => {
   const aLabel = aName.value || 'A';
   const bLabel = bName.value || 'B';
@@ -149,11 +193,33 @@ const toggle = (): void => {
   active.value = active.value ? 0 : 1;
 };
 
+const share = (): void => {
+  const url = location.href;
+  navigator.clipboard
+    .writeText(url)
+    .then(() => toast.push('URLをコピーしました'))
+    .catch(() => toast.push('コピーに失敗しました'));
+};
+
 onMounted(() => {
   const onKey = (e: KeyboardEvent) => {
     if (e.altKey && e.key.toLowerCase() === 's') {
       e.preventDefault();
       swap();
+    }
+    if (e.altKey && e.key === '1') {
+      e.preventDefault();
+      const el = aRef.value?.$el?.querySelector('input') as HTMLInputElement | null;
+      el?.focus();
+    }
+    if (e.altKey && e.key === '2') {
+      e.preventDefault();
+      const el = bRef.value?.$el?.querySelector('input') as HTMLInputElement | null;
+      el?.focus();
+    }
+    if (e.altKey && e.key.toLowerCase() === 'd') {
+      e.preventDefault();
+      highlight.value = !highlight.value;
     }
     if (e.key === 'ArrowLeft') active.value = 0;
     if (e.key === 'ArrowRight') active.value = 1;
