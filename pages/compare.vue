@@ -34,6 +34,8 @@
       <button class="rounded-lg bg-teal-600 px-3 py-2 text-sm text-white" @click="swap">A↔B 入替</button>
       <div class="text-xs text-gray-400">現在: {{ active === 0 ? 'A' : 'B' }} を表示中</div>
     </div>
+
+    <KpiDiffTable :a="aKpi" :b="bKpi" class="mt-4" />
   </section>
 </template>
 
@@ -43,13 +45,14 @@ const router = useRouter()
 const wrap = ref<HTMLElement|null>(null)
 const active = ref(0) // 0:A 1:B
 const offset = computed(() => active.value === 0 ? 0 : -100)
+const aKpi = ref({ agari:.23, houju:.11, riichi:.19, furo:.38, avgRank:2.42 })
+const bKpi = ref({ agari:.21, houju:.12, riichi:.17, furo:.36, avgRank:2.55 })
 
-useHead({
-  title: '比較 — Paiviz',
-  meta: [
-    { property: 'og:title', content: 'Paiviz 比較' },
-    { property: 'og:description', content: 'プレイヤーAとBを並べて比較' }
-  ]
+useHead(() => {
+  const a = (route.query.a as string) || 'A'
+  const b = (route.query.b as string) || 'B'
+  const ttl = `比較: ${a} vs ${b} — Paiviz`
+  return { title: ttl, meta: [{ property:'og:title', content: ttl }, { name:'twitter:title', content: ttl }] }
 })
 
 const swap = (): void => {
