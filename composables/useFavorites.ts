@@ -1,10 +1,10 @@
-const KEY = "paiviz:favs";
+const KEY = 'paiviz:favs';
 const favs = ref<Set<string>>(new Set());
 
 const load = () => {
   try {
     const s = localStorage.getItem(KEY);
-    favs.value = new Set(JSON.parse(s || "[]"));
+    favs.value = new Set(JSON.parse(s || '[]'));
   } catch {
     favs.value = new Set();
   }
@@ -18,7 +18,11 @@ const save = (): void => {
 export const useFavorites = () => {
   if (process.client && favs.value.size === 0) load();
   const toggle = (name: string) => {
-    favs.value.has(name) ? favs.value.delete(name) : favs.value.add(name);
+    if (favs.value.has(name)) {
+      favs.value.delete(name);
+    } else {
+      favs.value.add(name);
+    }
     save();
   };
   const has = (name: string) => favs.value.has(name);

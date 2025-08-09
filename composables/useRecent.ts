@@ -2,13 +2,15 @@ export const useRecent = (): {
   recent: Ref<string[]>;
   addRecent: (name: string) => void;
 } => {
-  const key = "paiviz:recent";
+  const key = 'paiviz:recent';
   const recent = ref<string[]>([]);
   if (process.client) {
     try {
       const raw = localStorage.getItem(key);
       if (raw) recent.value = JSON.parse(raw);
-    } catch {}
+    } catch {
+      /* ignore */
+    }
   }
   const addRecent = (name: string): void => {
     const set = new Set([name, ...recent.value]);

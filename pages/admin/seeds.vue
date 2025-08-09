@@ -5,7 +5,11 @@
     <div class="rounded-2xl border border-[#242A33] bg-[#161A20] p-4">
       <div class="mb-3 text-sm text-muted">サジェスト候補（KV seed:players）</div>
       <div class="flex gap-2">
-        <input v-model="name" class="w-full rounded-xl bg-[#0F1115] px-3 py-2 ring-1 ring-[#242A33]" placeholder="プレイヤー名を追加" />
+        <input
+          v-model="name"
+          class="w-full rounded-xl bg-[#0F1115] px-3 py-2 ring-1 ring-[#242A33]"
+          placeholder="プレイヤー名を追加"
+        />
         <button class="rounded-lg bg-teal-600 px-3 py-2 text-sm" @click="add">追加</button>
       </div>
       <div class="mt-3">
@@ -29,29 +33,43 @@
 </template>
 
 <script setup lang="ts">
-import { listSeeds, addSeed, deleteSeed } from '~/utils/api'
-const runtime = useRuntimeConfig()
-const ITEMS_PER_LOAD = 200
-const items = ref<{name:string}[]>([])
-const name = ref('')
+import { listSeeds, addSeed, deleteSeed } from '~/utils/api';
+const items = ref<{ name: string }[]>([]);
+const name = ref('');
 
 // 最低限の簡易ガード：管理トークンを毎回要求（Pages Functions 側で検証）
-const admin = ref('')
+const admin = ref('');
 onMounted(async () => {
-  admin.value = localStorage.getItem('paiviz_admin') || prompt('ADMIN_TOKEN を入力') || ''
-  if (admin.value) localStorage.setItem('paiviz_admin', admin.value)
-  await reload()
-})
+  admin.value = localStorage.getItem('paiviz_admin') || prompt('ADMIN_TOKEN を入力') || '';
+  if (admin.value) localStorage.setItem('paiviz_admin', admin.value);
+  await reload();
+});
 
-async function reload(){
-  try { items.value = await listSeeds() } catch { items.value = [] }
+async function reload() {
+  try {
+    items.value = await listSeeds();
+  } catch {
+    items.value = [];
+  }
 }
-async function add(){
-  const n = name.value.trim(); if (!n) return
-  try { await addSeed(n, admin.value as any); name.value=''; await reload() } catch {}
+async function add() {
+  const n = name.value.trim();
+  if (!n) return;
+  try {
+    await addSeed(n, admin.value as any);
+    name.value = '';
+    await reload();
+  } catch {
+    /* ignore */
+  }
 }
-async function del(n: string){
-  if (!confirm(`${n} を削除しますか？`)) return
-  try { await deleteSeed(n, admin.value as any); await reload() } catch {}
+async function del(n: string) {
+  if (!confirm(`${n} を削除しますか？`)) return;
+  try {
+    await deleteSeed(n, admin.value as any);
+    await reload();
+  } catch {
+    /* ignore */
+  }
 }
 </script>

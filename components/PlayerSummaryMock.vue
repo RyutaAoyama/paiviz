@@ -12,27 +12,27 @@
     </div>
     <div class="rounded-2xl border border-border bg-surface p-4">
       <div class="mb-2 text-sm text-muted">Rate 推移（ダミー）</div>
-      <div ref="box" style="height:200px"></div>
+      <div ref="box" style="height: 200px"></div>
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref } from 'vue'
-import { getLineOptions } from '~/utils/chartTheme'
-import { pct } from '~/utils/kpi'
+import { onMounted, onBeforeUnmount, ref } from 'vue';
+import { getLineOptions } from '~/utils/chartTheme';
+import { pct } from '~/utils/kpi';
 
-const props = defineProps<{ name: string }>()
-let chart:any
-const box = ref<HTMLElement|null>(null)
+const { name } = defineProps<{ name: string }>();
+let chart: any;
+const box = ref<HTMLElement | null>(null);
 
 onMounted(async () => {
-  const echarts = await import('echarts')
-  if (!box.value) return
-  chart = echarts.init(box.value)
-  const x = Array.from({ length: 40 }).map((_, i) => i + 1)
-  const y = x.map(i => 1800 + Math.sin(i / 6) * 100 + Math.random() * 50)
-  chart.setOption(getLineOptions(y, x))
-})
-onBeforeUnmount(() => chart?.dispose?.())
+  const echarts = await import('echarts');
+  if (!box.value) return;
+  chart = echarts.init(box.value);
+  const x = Array.from({ length: 40 }).map((_, i) => i + 1);
+  const y = x.map((i) => 1800 + Math.sin(i / 6) * 100 + Math.random() * 50);
+  chart.setOption(getLineOptions(y, x));
+});
+onBeforeUnmount(() => chart?.dispose?.());
 </script>
