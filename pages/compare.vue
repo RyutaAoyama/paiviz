@@ -2,7 +2,7 @@
   <section class="space-y-4">
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-bold">プレイヤー比較</h1>
-      <div class="flex items-center gap-2 text-sm text-muted">
+      <div class="flex flex-wrap items-center gap-2 text-sm text-muted">
         <button
           class="rounded-lg border border-border px-2 py-1 hover:text-text"
           @click="shareCurrent"
@@ -19,7 +19,7 @@
       </div>
     </div>
 
-    <div class="grid gap-2 md:grid-cols-2">
+    <div class="grid gap-2 lg:grid-cols-2">
       <div class="flex items-center gap-2">
         <span class="text-xs text-muted w-12">A</span>
         <PlayerSelect
@@ -36,7 +36,7 @@
       </div>
     </div>
 
-    <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <PlayerSummary :name="a" :peerKpi="kpiB" :rwindow="rwindow" />
       <PlayerSummary :name="b" :peerKpi="kpiA" :rwindow="rwindow" />
     </div>
@@ -70,7 +70,7 @@ const dataB = usePlayerData(b);
 const kpiA = computed(() => dataA.kpi.value);
 const kpiB = computed(() => dataB.kpi.value);
 
-async function shareCurrent() {
+const shareCurrent = async (): Promise<void> => {
   try {
     const short = await createShareLink("compare", {
       a: a.value,
@@ -82,14 +82,14 @@ async function shareCurrent() {
   } catch {
     pushToast("共有リンクの作成に失敗しました", "error");
   }
-}
+};
 
-function swap() {
+const swap = (): void => {
   const tmp = a.value;
   a.value = b.value;
   b.value = tmp;
   pushToast("A/Bを入れ替えました", "success");
-}
+};
 
 onMounted(() => {
   const handler = (e: KeyboardEvent) => {

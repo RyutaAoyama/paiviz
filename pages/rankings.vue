@@ -65,8 +65,16 @@
         </button>
       </div>
 
-      <div v-if="sorted.length === 0" class="p-6 text-sm text-muted">
-        条件に合うプレイヤーが見つかりません。フィルタや期間を見直してください。
+      <div v-if="sorted.length === 0">
+        <div
+          v-if="favOnly && favList.length === 0"
+          class="p-6 text-sm text-muted"
+        >
+          お気に入りのプレイヤーがありません。プレイヤー詳細ページの★ボタンで登録できます。
+        </div>
+        <div v-else class="p-6 text-sm text-muted">
+          条件に合うプレイヤーが見つかりません。フィルタや期間を見直してください。
+        </div>
       </div>
 
       <div
@@ -153,7 +161,7 @@ const asSortKey = (v: any): SortKey =>
 
 const route = useRoute();
 const router = useRouter();
-const { isFav } = useFavorites();
+const { isFav, list: favList } = useFavorites();
 const { push: pushToast } = useToast();
 
 const mode = ref<Mode>(asMode(route.query.mode));
@@ -222,40 +230,38 @@ watch(
   }
 );
 
-function onRange(p: { mode: string; from: string; to: string }) {
+const onRange = (p: { mode: string; from: string; to: string }): void => {
   mode.value = asMode(p.mode);
   from.value = p.from;
   to.value = p.to;
-}
+};
 
-function setSort(key: SortKey) {
+const setSort = (key: SortKey): void => {
   if (sort.key === key) sort.dir = sort.dir === "asc" ? "desc" : "asc";
   else {
     sort.key = key;
     sort.dir = key === "name" ? "asc" : "desc";
   }
-}
-function aria(k: SortKey) {
-  return sort.key === k
+};
+const aria = (k: SortKey): "ascending" | "descending" | "none" =>
+  sort.key === k
     ? sort.dir === "asc"
       ? "ascending"
       : "descending"
     : "none";
-}
-function icon(k: SortKey) {
-  return sort.key === k ? sort.dir : "none";
-}
+const icon = (k: SortKey): "asc" | "desc" | "none" =>
+  sort.key === k ? sort.dir : "none";
 
 const loading = ref(true);
 onMounted(() => setTimeout(() => (loading.value = false), 250));
 
 const rowHeight = computed(() => (dense.value ? 40 : 48));
-function randomDateWithin(days = 120) {
+const randomDateWithin = (days = 120): Date => {
   const to = new Date();
   const from = new Date(to.getTime() - days * 86400000);
   const t = from.getTime() + Math.random() * (to.getTime() - from.getTime());
   return new Date(t);
-}
+};
 
 const total = 1000;
 const data = Array.from({ length: total }).map((_, i) => ({
@@ -313,27 +319,25 @@ onMounted(() => {
 });
 watch(dense, () => calcVisible());
 
-function calcVisible() {
+const calcVisible = (): void => {
   const h = viewport.value?.clientHeight ?? (dense.value ? 480 : 560);
   visibleCount.value = Math.ceil(h / rowHeight.value) + 2;
-}
-function onScroll() {
+};
+const onScroll = (): void => {
   const st = viewport.value?.scrollTop ?? 0;
   startIndex.value = Math.max(0, Math.floor(st / rowHeight.value) - 1);
-}
+};
 const visibleRows = computed(() =>
   sorted.value.slice(startIndex.value, startIndex.value + visibleCount.value)
 );
 const totalHeight = computed(() => sorted.value.length * rowHeight.value);
 
-function toggleDense() {
+const toggleDense = (): void => {
   dense.value = !dense.value;
-}
-function isSelected(i: number) {
-  return selected.value === i;
-}
+};
+const isSelected = (i: number): boolean => selected.value === i;
 
-function onKey(e: KeyboardEvent) {
+const onKey = (e: KeyboardEvent): void => {
   if (e.key === "ArrowDown") {
     e.preventDefault();
     selected.value = Math.min(sorted.value.length - 1, selected.value + 1);
@@ -346,8 +350,8 @@ function onKey(e: KeyboardEvent) {
     e.preventDefault();
     goDetail(selected.value);
   }
-}
-function ensureVisible() {
+};
+const ensureVisible = (): void => {
   const vp = viewport.value;
   if (!vp) return;
   const top = selected.value * rowHeight.value;
@@ -355,13 +359,13 @@ function ensureVisible() {
   if (top < vp.scrollTop) vp.scrollTop = top;
   if (bottom > vp.scrollTop + vp.clientHeight)
     vp.scrollTop = bottom - vp.clientHeight;
-}
-function goDetail(i: number) {
+};
+const goDetail = (i: number): void => {
   const row = sorted.value[i];
   if (row) navigateTo(`/player/${encodeURIComponent(row.name)}`);
-}
+};
 
-async function shareCurrent() {
+const shareCurrent = async (): Promise<void> => {
   try {
     const short = await createShareLink("rankings", {
       mode: mode.value,
@@ -379,9 +383,9 @@ async function shareCurrent() {
   } catch {
     pushToast("共有リンクの作成に失敗しました", "error");
   }
-}
+};
 
-function onExportCsv() {
+const onExportCsv = (): void => {
   const header = ["rank", "name", "rate", "games"];
   const rows = sorted.value
     .map((r, idx) => ({
@@ -398,6 +402,6 @@ function onExportCsv() {
     games: "対局数",
   });
   pushToast("CSVをダウンロードしました", "success");
-}
+};
 const drawerOpen = ref(false);
 </script>

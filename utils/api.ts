@@ -25,6 +25,10 @@ export interface MetaRankings {
   note?: string;
 }
 
+export interface SuggestSeedsResponse {
+  seeds: string[];
+}
+
 type ApiOptions = {
   method?: "GET" | "POST";
   body?: any;
@@ -32,10 +36,10 @@ type ApiOptions = {
   headers?: Record<string, string>;
 };
 
-export async function apiFetch<T>(
+export const apiFetch = async <T>(
   path: string,
   opts: ApiOptions = {}
-): Promise<T> {
+): Promise<T> => {
   const { method = "GET", body, timeoutMs = 8000, headers = {} } = opts;
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -67,38 +71,48 @@ export async function apiFetch<T>(
   } finally {
     clearTimeout(t);
   }
-}
+};
 
 // ---- エンドポイント別の薄いラッパ ----
 
-export async function createShareLink(
+export const createShareLink = async (
   kind: ShareKind,
   data: Record<string, any>
-): Promise<string> {
+): Promise<string> => {
   const res = await apiFetch<ShortenResponse>("/api/shorten", {
     method: "POST",
     body: { kind, data },
   });
   return res.short;
-}
+};
 
-export async function getSnapshot(id: string): Promise<SnapshotPayload> {
-  return apiFetch<SnapshotPayload>(
-    `/api/snapshot?id=${encodeURIComponent(id)}`
-  );
-}
+export const getSnapshot = async (
+  id: string
+): Promise<SnapshotPayload> =>
+  apiFetch<SnapshotPayload>(`/api/snapshot?id=${encodeURIComponent(id)}`);
 
-export async function getSuggest(
+export const getSuggest = async (
   q: string,
   limit = 10
-): Promise<SuggestItem[]> {
+): Promise<SuggestItem[]> => {
   if (!q || q.trim().length < 2) return [];
   const res = await apiFetch<SuggestResponse>(
     `/api/suggest?q=${encodeURIComponent(q)}&limit=${limit}`
   );
   return Array.isArray(res.suggestions) ? res.suggestions : [];
-}
+};
 
-export async function getRankingsMeta(): Promise<MetaRankings> {
-  return apiFetch<MetaRankings>("/api/meta/rankings");
-}
+export const getRankingsMeta = async (): Promise<MetaRankings> =>
+  apiFetch<MetaRankings>("/api/meta/rankings");
+
+export const getSuggestSeeds = async (): Promise<string[]> => {
+  const res = await apiFetch<SuggestSeedsResponse>("/api/suggest/manage");
+  return Array.isArray(res.seeds) ? res.seeds : [];
+};
+
+export const saveSuggestSeeds = async (seeds: string[]): Promise<void> => {
+  await apiFetch("/api/suggest/manage", {
+    method: "POST",
+    body: { seeds },
+  });
+};
