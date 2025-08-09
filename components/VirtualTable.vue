@@ -1,5 +1,10 @@
 <template>
-  <div class="rounded-2xl border border-[#242A33] bg-[#161A20]" role="grid">
+  <div
+    class="rounded-2xl border border-[#242A33] bg-[#161A20]"
+    role="grid"
+    tabindex="0"
+    @keydown="onKey"
+  >
     <!-- ヘッダ -->
     <div
       class="sticky top-0 z-10 grid border-b border-[#242A33] bg-[#161A20] text-xs text-gray-400"
@@ -33,9 +38,11 @@
         <div
           v-for="(row, i) in visibleRows"
           :key="row[keyField] ?? i"
-          class="grid items-center text-sm text-gray-200 hover:bg-white/5"
+          class="grid items-center text-sm text-gray-200"
+          :class="start + i === active ? 'bg-white/10' : 'hover:bg-white/5'"
           :style="{ gridTemplateColumns: colTemplate, height: rowHeight + 'px' }"
           role="row"
+          :aria-selected="start + i === active"
         >
           <div v-for="c in columns" :key="c.key" class="px-3">
             <component :is="c.render ?? 'span'" v-bind="buildCellProps(row, c)">{{
@@ -73,6 +80,7 @@ const start = ref(0);
 const end = ref(0);
 const buffer = 6; // 上下に余分に描画
 const colTemplate = computed(() => (props.columns ?? []).map((c) => c.width ?? '1fr').join(' '));
+const active = ref(0);
 
 const totalHeight = computed(() => (props.rows?.length ?? 0) * rowHeight);
 const page = Math.ceil(height / rowHeight);
@@ -103,4 +111,28 @@ const buildCellProps = (row: any, c: Col) => ({ row, value: row[c.key], col: c }
 
 // 公開メソッド：現在の可視行（CSVなどで利用したい場合）
 defineExpose({ getVisible: () => visibleRows.value });
+
+const emit = defineEmits<{ (e: 'enter', row: any): void }>();
+const scrollToActive = () => {
+  const v = viewport.value;
+  if (!v) return;
+  const top = active.value * rowHeight;
+  if (top < v.scrollTop) v.scrollTop = top;
+  else if (top + rowHeight > v.scrollTop + height) v.scrollTop = top - height + rowHeight;
+  clamp();
+};
+const onKey = (e: KeyboardEvent) => {
+  if (e.key === 'ArrowDown') {
+    active.value = Math.min((props.rows?.length ?? 0) - 1, active.value + 1);
+    scrollToActive();
+    e.preventDefault();
+  } else if (e.key === 'ArrowUp') {
+    active.value = Math.max(0, active.value - 1);
+    scrollToActive();
+    e.preventDefault();
+  } else if (e.key === 'Enter') {
+    const row = props.rows?.[active.value];
+    if (row) emit('enter', row);
+  }
+};
 </script>

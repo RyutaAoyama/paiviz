@@ -1,4 +1,5 @@
-import type { PagesFunction } from './$types';
+/// <reference lib="webworker" />
+/// <reference types="@cloudflare/workers-types" />
 
 /** HTML をエスケープする */
 const esc = (s: string): string => s.replace(/[&<]/g, (c) => (c === '&' ? '&amp;' : '&lt;'));

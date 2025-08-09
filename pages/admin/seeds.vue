@@ -54,7 +54,7 @@
 </template>
 
 <script setup lang="ts">
-import { listSeeds, addSeed, deleteSeed } from '~/utils/api';
+import { listSeeds, addSeeds, deleteSeed } from '~/utils/api';
 import { downloadCsv } from '~/utils/csv';
 const items = ref<{ name: string }[]>([]);
 const name = ref('');
@@ -80,17 +80,15 @@ const reload = async (): Promise<void> => {
 };
 
 const saveNames = async (names: string[]): Promise<void> => {
-  const before = items.value.length;
-  for (const n of names) {
-    try {
-      await addSeed(n, admin.value as any);
-    } catch {
-      toast.push(`登録失敗: ${n}`);
-    }
+  const uniq = Array.from(new Set(names.map((n) => n.trim()).filter(Boolean)));
+  if (!uniq.length) return;
+  try {
+    await addSeeds(uniq, admin.value as any);
+    await reload();
+    toast.push(`追加 ${uniq.length}件 (計${items.value.length}件)`);
+  } catch {
+    toast.push('登録に失敗しました');
   }
-  await reload();
-  const diff = items.value.length - before;
-  toast.push(`追加 ${diff}件 (計${items.value.length}件)`);
 };
 
 const add = async (): Promise<void> => {

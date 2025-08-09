@@ -7,11 +7,13 @@ export default defineNuxtPlugin(() => {
   s.async = true;
   s.src = `https://www.googletagmanager.com/gtag/js?id=${id}`;
   document.head.appendChild(s);
-  // @ts-expect-error: GA snippet uses global dataLayer on window
-  window.dataLayer = window.dataLayer || [];
-  function gtag(...args: any[]) {
-    (window as any).dataLayer.push(args);
-  }
+  type DLWindow = Window & { dataLayer: unknown[] };
+  const w = window as DLWindow;
+  // GA snippet uses global dataLayer on window
+  w.dataLayer = w.dataLayer || [];
+  const gtag = (...args: unknown[]): void => {
+    w.dataLayer.push(args);
+  };
   gtag('js', new Date());
   gtag('config', id, { anonymize_ip: true });
 });
