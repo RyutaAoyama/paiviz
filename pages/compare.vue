@@ -5,7 +5,7 @@
       <div class="flex items-center gap-2 text-sm text-muted">
         <button
           class="rounded-lg border border-border px-2 py-1 hover:text-text"
-          @click="copyLink"
+          @click="shareCurrent"
         >
           共有
         </button>
@@ -44,6 +44,8 @@
 </template>
 
 <script setup lang="ts">
+import { createShareLink } from "@/utils/share";
+
 const route = useRoute();
 const router = useRouter();
 const { push: pushToast } = useToast();
@@ -52,7 +54,6 @@ const a = ref<string>(String(route.query.a ?? "Player_A"));
 const b = ref<string>(String(route.query.b ?? "Player_B"));
 const rwindow = ref<number>(Number(route.query.rwindow ?? 120) || 120);
 
-// URL同期
 watch([a, b, rwindow], () => {
   router.replace({
     query: {
@@ -69,14 +70,20 @@ const dataB = usePlayerData(b);
 const kpiA = computed(() => dataA.kpi.value);
 const kpiB = computed(() => dataB.kpi.value);
 
-async function copyLink() {
+async function shareCurrent() {
   try {
-    await navigator.clipboard.writeText(location.href);
-    pushToast("共有リンクをコピーしました", "success");
+    const short = await createShareLink("compare", {
+      a: a.value,
+      b: b.value,
+      rwindow: rwindow.value,
+    });
+    await navigator.clipboard.writeText(short);
+    pushToast("共有リンクを作成してコピーしました", "success");
   } catch {
-    pushToast("コピーに失敗しました", "error");
+    pushToast("共有リンクの作成に失敗しました", "error");
   }
 }
+
 function swap() {
   const tmp = a.value;
   a.value = b.value;
@@ -84,7 +91,6 @@ function swap() {
   pushToast("A/Bを入れ替えました", "success");
 }
 
-// Alt+S で入れ替え
 onMounted(() => {
   const handler = (e: KeyboardEvent) => {
     if (e.altKey && (e.key === "s" || e.key === "S")) {

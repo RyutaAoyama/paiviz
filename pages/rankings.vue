@@ -65,7 +65,12 @@
         </button>
       </div>
 
+      <div v-if="sorted.length === 0" class="p-6 text-sm text-muted">
+        条件に合うプレイヤーが見つかりません。フィルタや期間を見直してください。
+      </div>
+
       <div
+        v-else
         :style="{ height: totalHeight + 'px', position: 'relative' }"
         role="table"
         aria-label="ランキング"
@@ -99,25 +104,36 @@
       </div>
     </div>
 
+    <div class="flex items-center justify-between">
+      <div class="text-xs text-muted">
+        ヒント:
+        フィルタはURLに保存されます。スマホでは下部ナビから主要ページに素早く移動できます。
+      </div>
+      <div class="md:hidden flex items-center gap-2">
+        <button
+          class="rounded-lg border border-border px-3 py-1.5 text-sm hover:text-text"
+          @click="shareCurrent"
+        >
+          共有リンク作成
+        </button>
+      </div>
+    </div>
+
     <FilterDrawer
       v-model:open="drawerOpen"
       v-model:favOnly="favOnly"
       @range="onRange"
       @exportCsv="onExportCsv"
-      @share="copyLink"
+      @share="shareCurrent"
     />
-
-    <div class="text-xs text-muted">
-      ヒント:
-      フィルタはURLに保存されます。スマホでは下部ナビから主要ページに素早く移動できます。
-    </div>
   </section>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { downloadCsv } from "~/utils/csv";
+import { downloadCsv } from "@/utils/csv";
+import { createShareLink } from "@/utils/share";
 
 type Mode = "this" | "prev" | "last30d" | "last90d" | "custom";
 type Table = "一般" | "上" | "特上" | "鳳凰";
@@ -140,7 +156,6 @@ const router = useRouter();
 const { isFav } = useFavorites();
 const { push: pushToast } = useToast();
 
-// --- URL同期ステート ---
 const mode = ref<Mode>(asMode(route.query.mode));
 const from = ref(String(route.query.from ?? ""));
 const to = ref(String(route.query.to ?? ""));
@@ -154,7 +169,6 @@ const sort = reactive<{ key: SortKey; dir: "asc" | "desc" }>({
   dir: route.query.sortDir === "asc" ? "asc" : "desc",
 });
 
-// FilterChips の v-model と一致する型
 const chipModel = computed<{
   mode: Mode;
   tableType: Table;
@@ -178,7 +192,6 @@ const chipModel = computed<{
   },
 });
 
-// URL更新
 watch(
   [
     mode,
@@ -209,14 +222,12 @@ watch(
   }
 );
 
-// ドロワーからの期間更新（string受け→ナロー）
 function onRange(p: { mode: string; from: string; to: string }) {
   mode.value = asMode(p.mode);
   from.value = p.from;
   to.value = p.to;
 }
 
-// 並び替え
 function setSort(key: SortKey) {
   if (sort.key === key) sort.dir = sort.dir === "asc" ? "desc" : "asc";
   else {
@@ -235,13 +246,10 @@ function icon(k: SortKey) {
   return sort.key === k ? sort.dir : "none";
 }
 
-// ローディング（モック）
 const loading = ref(true);
 onMounted(() => setTimeout(() => (loading.value = false), 250));
 
-// ---- データ（モックだが日付持ち）+ フィルタ + ソート ----
 const rowHeight = computed(() => (dense.value ? 40 : 48));
-
 function randomDateWithin(days = 120) {
   const to = new Date();
   const from = new Date(to.getTime() - days * 86400000);
@@ -261,17 +269,11 @@ const data = Array.from({ length: total }).map((_, i) => ({
 
 const filtered = computed(() => {
   const list = [...data];
-  // 日付フィルタ
   if (from.value && to.value) {
     const fromD = new Date(from.value + "T00:00:00");
     const toD = new Date(to.value + "T23:59:59");
-    list.splice(
-      0,
-      list.length,
-      ...list.filter((r) => r.playedAt >= fromD && r.playedAt <= toD)
-    );
+    return list.filter((r) => r.playedAt >= fromD && r.playedAt <= toD);
   } else {
-    // プリセットに応じて範囲を決める（UI実感用）
     const days =
       mode.value === "this"
         ? 31
@@ -281,15 +283,16 @@ const filtered = computed(() => {
         ? 90
         : 30;
     const fromD = new Date(Date.now() - days * 86400000);
-    list.splice(0, list.length, ...list.filter((r) => r.playedAt >= fromD));
+    return list.filter((r) => r.playedAt >= fromD);
   }
-  // お気に入りのみ
-  if (favOnly.value) return list.filter((r) => isFav(r.name));
-  return list;
 });
 
+const favFiltered = computed(() =>
+  favOnly.value ? filtered.value.filter((r) => isFav(r.name)) : filtered.value
+);
+
 const sorted = computed(() => {
-  const base = [...filtered.value];
+  const base = [...favFiltered.value];
   const dir = sort.dir === "asc" ? 1 : -1;
   if (sort.key === "rank") return dir === 1 ? base : base.reverse();
   if (sort.key === "name")
@@ -300,7 +303,6 @@ const sorted = computed(() => {
   return base;
 });
 
-// 仮想リスト
 const viewport = ref<HTMLElement | null>(null);
 const startIndex = ref(0);
 const visibleCount = ref(0);
@@ -359,15 +361,26 @@ function goDetail(i: number) {
   if (row) navigateTo(`/player/${encodeURIComponent(row.name)}`);
 }
 
-// 共有 & CSV
-async function copyLink() {
+async function shareCurrent() {
   try {
-    await navigator.clipboard.writeText(location.href);
-    pushToast("共有リンクをコピーしました", "success");
+    const short = await createShareLink("rankings", {
+      mode: mode.value,
+      from: from.value,
+      to: to.value,
+      tableType: tableType.value,
+      rule: rule.value,
+      dense: dense.value,
+      favOnly: favOnly.value,
+      sortKey: sort.key,
+      sortDir: sort.dir,
+    });
+    await navigator.clipboard.writeText(short);
+    pushToast("共有リンクを作成してコピーしました", "success");
   } catch {
-    pushToast("コピーに失敗しました", "error");
+    pushToast("共有リンクの作成に失敗しました", "error");
   }
 }
+
 function onExportCsv() {
   const header = ["rank", "name", "rate", "games"];
   const rows = sorted.value
@@ -386,6 +399,5 @@ function onExportCsv() {
   });
   pushToast("CSVをダウンロードしました", "success");
 }
-
 const drawerOpen = ref(false);
 </script>
