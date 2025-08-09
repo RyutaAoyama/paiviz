@@ -1,4 +1,4 @@
-type Env = { PAIVIZ_KV: KVNamespace; ADMIN_TOKEN: string };
+type Env = { PAIVIZ_LINKS: KVNamespace; ADMIN_TOKEN: string };
 
 async function getList(kv: KVNamespace): Promise<string[]> {
   const txt = await kv.get('seed:players');
@@ -18,37 +18,43 @@ async function setList(kv: KVNamespace, arr: string[]) {
 }
 
 export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
-  const items = (await getList(env.PAIVIZ_KV)).map((name: string) => ({ name, source: 'kv' }));
+  const items = (await getList(env.PAIVIZ_LINKS)).map((name: string) => ({ name, source: 'kv' }));
   return new Response(JSON.stringify({ items }), {
     headers: { 'content-type': 'application/json' },
   });
 };
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
-  const body = await request.json().catch(() => ({}) as any);
-  if ((body?.admin || '') !== env.ADMIN_TOKEN) return new Response('forbidden', { status: 403 });
+  const body = (await request.json().catch(() => ({}) as unknown)) as
+    | { admin?: string; names?: unknown[]; name?: unknown }
+    | unknown;
+  const admin = typeof (body as any)?.admin === 'string' ? (body as any).admin : '';
+  if (admin !== env.ADMIN_TOKEN) return new Response('forbidden', { status: 403 });
   let names: string[] = [];
-  if (Array.isArray(body?.names))
-    names = body.names.map((n: any) => String(n || '').trim()).filter(Boolean);
+  if (Array.isArray((body as any)?.names))
+    names = ((body as any).names as unknown[]).map((n) => String(n || '').trim()).filter(Boolean);
   else {
-    const name = String(body?.name || '').trim();
+    const name = String((body as any)?.name || '').trim();
     if (name) names = [name];
   }
   if (!names.length) return new Response('bad request', { status: 400 });
-  const list = await getList(env.PAIVIZ_KV);
+  const list = await getList(env.PAIVIZ_LINKS);
   for (const n of names) list.push(n);
-  await setList(env.PAIVIZ_KV, list);
+  await setList(env.PAIVIZ_LINKS, list);
   return new Response(JSON.stringify({ ok: true }), {
     headers: { 'content-type': 'application/json' },
   });
 };
 
 export const onRequestDelete: PagesFunction<Env> = async ({ request, env }) => {
-  const body = await request.json().catch(() => ({}) as any);
-  if ((body?.admin || '') !== env.ADMIN_TOKEN) return new Response('forbidden', { status: 403 });
-  const name = String(body?.name || '').trim();
-  const list = (await getList(env.PAIVIZ_KV)).filter((n) => n !== name);
-  await setList(env.PAIVIZ_KV, list);
+  const body = (await request.json().catch(() => ({}) as unknown)) as
+    | { admin?: string; name?: unknown }
+    | unknown;
+  const admin = typeof (body as any)?.admin === 'string' ? (body as any).admin : '';
+  if (admin !== env.ADMIN_TOKEN) return new Response('forbidden', { status: 403 });
+  const name = String((body as any)?.name || '').trim();
+  const list = (await getList(env.PAIVIZ_LINKS)).filter((n) => n !== name);
+  await setList(env.PAIVIZ_LINKS, list);
   return new Response(JSON.stringify({ ok: true }), {
     headers: { 'content-type': 'application/json' },
   });
