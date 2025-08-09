@@ -118,7 +118,7 @@ function move(d: number) {
     const nlen = (pools[ns] || []).length
     if (nlen > 0 || ns==='suggest') {
       activeSection.value = ns
-      activeIndex.value = 0
+      activeIndex.value = d > 0 ? 0 : Math.max(0, nlen - 1)
       break
     }
   }
