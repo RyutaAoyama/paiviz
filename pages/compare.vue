@@ -162,14 +162,17 @@ watch(
 
 watch(aInput, (v) => router.replace({ query: { ...route.query, a: v } }));
 watch(bInput, (v) => router.replace({ query: { ...route.query, b: v } }));
+const url = useRequestURL();
 useHead(() => {
   const aLabel = aName.value || 'A';
   const bLabel = bName.value || 'B';
   const ttl = `比較: ${aLabel} vs ${bLabel} — Paiviz`;
   const desc = `${aLabel} と ${bLabel} の成績比較`;
   const img = `/api/og?title=${encodeURIComponent('比較')}&subtitle=${encodeURIComponent(`${aLabel} vs ${bLabel}`)}&badge=Paiviz&theme=violet`;
+  const canonical = url.origin + url.pathname;
   return {
     title: ttl,
+    link: [{ rel: 'canonical', href: canonical }],
     meta: [
       { property: 'og:title', content: ttl },
       { property: 'og:description', content: desc },

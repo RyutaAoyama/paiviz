@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { h } from 'vue';
+import { h, ref, onMounted, watch } from 'vue';
 import FavStar from '~/components/FavStar.vue';
+import type { RankResponse, RankRequest } from '~/workers/rankWorker';
 const { model, syncToUrl } = useRankingQuery();
+const url = useRequestURL();
 useHead(() => {
   const q = model.value;
   const period =
@@ -19,8 +21,10 @@ useHead(() => {
   const ttl = `ランキング（${q.mode} / ${q.tableType} / ${q.rule}）— Paiviz`;
   const desc = `天鳳のランキング。期間: ${period} / 卓: ${q.tableType} / ルール: ${q.rule}`;
   const img = `/api/og?title=${encodeURIComponent('ランキング')}&subtitle=${encodeURIComponent(`${q.tableType}/${q.rule}｜${period}`)}&badge=Paiviz&theme=teal`;
+  const canonical = url.origin + url.pathname;
   return {
     title: ttl,
+    link: [{ rel: 'canonical', href: canonical }],
     meta: [
       { property: 'og:title', content: ttl },
       { property: 'og:description', content: desc },
@@ -33,59 +37,60 @@ useHead(() => {
   };
 });
 
-// TODO: 実データに差し替え。今はモック行（安定動作確認用）
 type Row = { rank: number; name: string; rate: number; games: number; trend: string };
 const rows = ref<Row[]>([]);
+const filtered = ref<Row[]>([]);
 const loading = ref(true);
-const load = (): void => {
-  loading.value = true;
-  setTimeout(() => {
-    rows.value = Array.from({ length: 500 }, (_, i) => ({
-      rank: i + 1,
-      name: `Player_${(i + 1).toString().padStart(3, '0')}`,
-      rate: 2000 + Math.round(Math.random() * 800),
-      games: 50 + Math.round(Math.random() * 200),
-      trend: '↗︎',
-    }));
-    loading.value = false;
-  }, 300);
+let worker: Worker | null = null;
+const { list: favList } = useFavorites();
+
+const genRows = (): Row[] => {
+  return Array.from({ length: 50000 }, (_, i) => ({
+    rank: i + 1,
+    name: `Player_${(i + 1).toString().padStart(5, '0')}`,
+    rate: 2000 + Math.round(Math.random() * 800),
+    games: 50 + Math.round(Math.random() * 200),
+    trend: '↗︎',
+  }));
 };
+
+const recalc = () => {
+  if (!worker) return;
+  loading.value = true;
+  const sortKeys: RankRequest['sort']['keys'] = [];
+  const sk = model.value.sortKey;
+  const dir = model.value.sortDir;
+  if (sk === 'rate') sortKeys.push({ key: 'rate', dir });
+  else if (sk === 'games') sortKeys.push({ key: 'games', dir });
+  else if (sk === 'name') sortKeys.push({ key: 'name', dir });
+  else sortKeys.push({ key: 'rate', dir: 'desc' });
+  sortKeys.push({ key: 'games', dir: 'desc' }, { key: 'name', dir: 'asc' });
+  const msg: RankRequest = {
+    rows: rows.value,
+    filter: { favOnly: model.value.favOnly, favs: favList.value },
+    sort: { keys: sortKeys },
+  };
+  worker.postMessage(msg);
+};
+
+if (process.client) {
+  worker = new Worker(new URL('~/workers/rankWorker.ts', import.meta.url), { type: 'module' });
+  worker.onmessage = (e: MessageEvent<RankResponse>) => {
+    filtered.value = e.data.rows as Row[];
+    loading.value = false;
+  };
+}
+
+onMounted(() => {
+  rows.value = genRows();
+  recalc();
+});
+
 watch(
   () => ({ ...model.value }),
-  () => load()
+  () => recalc()
 );
-onMounted(load);
-
-// お気に入りフィルタ
-const { has } = useFavorites();
-const collator = new Intl.Collator('ja');
-const filtered = computed(() => {
-  let r = rows.value;
-  if (model.value.favOnly) r = r.filter((row) => has(row.name));
-  const { sortKey, sortDir } = model.value;
-  const dir = sortDir === 'asc' ? 1 : -1;
-  const decorated = r.map((row, i) => ({ ...row, __idx: i }));
-  const order = (a: any, b: any): number => {
-    const seq: [string, number][] = [];
-    if (sortKey === 'rate') seq.push(['rate', dir], ['games', -1], ['name', 1]);
-    else if (sortKey === 'games') seq.push(['games', dir], ['rate', -1], ['name', 1]);
-    else if (sortKey === 'name') seq.push(['name', dir], ['rate', -1], ['games', -1]);
-    else seq.push(['rank', dir], ['rate', -1], ['games', -1], ['name', 1]);
-    for (const [k, d] of seq) {
-      let cmp = 0;
-      if (k === 'name') cmp = collator.compare(a.name, b.name);
-      else cmp = a[k] === b[k] ? 0 : a[k] > b[k] ? 1 : -1;
-      if (cmp !== 0) return d * cmp;
-    }
-    return a.__idx - b.__idx; // 安定化
-  };
-  const sorted = decorated.sort(order).map((row, idx) => {
-    const rest = { ...row };
-    delete rest.__idx;
-    return { ...rest, rank: idx + 1 };
-  });
-  return sorted;
-});
+watch(favList, () => recalc());
 
 // CSV
 import { toCsv, downloadCsv } from '~/utils/csv';
@@ -166,6 +171,7 @@ const columns = [
       key-field="name"
       :sort-key="model.sortKey"
       :sort-dir="model.sortDir"
+      @enter="(row: Row) => navigateTo(`/player/${encodeURIComponent(row.name)}`)"
     />
   </section>
 </template>

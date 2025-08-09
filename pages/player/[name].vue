@@ -5,98 +5,116 @@
       <StarButton :name="displayName" />
     </div>
 
-    <div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
-      <KpiCard
-        label="和了率"
-        :value="pct(kpi.agari)"
-        :tone="toneForKpi('agari', kpi.agari)"
-      />
-      <KpiCard
-        label="放銃率"
-        :value="pct(kpi.houju)"
-        :tone="toneForKpi('houju', kpi.houju)"
-      />
-      <KpiCard
-        label="立直率"
-        :value="pct(kpi.riichi)"
-        :tone="toneForKpi('riichi', kpi.riichi)"
-      />
-      <KpiCard
-        label="副露率"
-        :value="pct(kpi.furo)"
-        :tone="toneForKpi('furo', kpi.furo)"
-      />
-      <KpiCard
-        label="平均順位"
-        :value="kpi.avgRank.toFixed(2)"
-        :tone="toneForKpi('avgRank', kpi.avgRank)"
-      />
+    <div v-if="loading" class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+      <SkeletonCard v-for="i in 5" :key="i" />
     </div>
-
-    <AdSlot type="mid" />
-
-    <div class="rounded-2xl border border-border bg-surface p-4">
-      <div class="mb-2 text-sm text-muted">Rate 推移（ダミーデータ + MA7）</div>
-      <div style="height: 280px" ref="chartBox"></div>
+    <div
+      v-else-if="!profile"
+      class="rounded-xl border border-border p-10 text-center text-sm text-muted"
+    >
+      データが見つかりませんでした
     </div>
+    <div v-else class="space-y-6">
+      <div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+        <KpiCard
+          label="和了率"
+          :value="pct(profile.kpi.agari)"
+          :tone="toneForKpi('agari', profile.kpi.agari)"
+        />
+        <KpiCard
+          label="放銃率"
+          :value="pct(profile.kpi.houju)"
+          :tone="toneForKpi('houju', profile.kpi.houju)"
+        />
+        <KpiCard
+          label="立直率"
+          :value="pct(profile.kpi.riichi)"
+          :tone="toneForKpi('riichi', profile.kpi.riichi)"
+        />
+        <KpiCard
+          label="副露率"
+          :value="pct(profile.kpi.furo)"
+          :tone="toneForKpi('furo', profile.kpi.furo)"
+        />
+        <KpiCard
+          label="平均順位"
+          :value="profile.kpi.avgRank.toFixed(2)"
+          :tone="toneForKpi('avgRank', profile.kpi.avgRank)"
+        />
+      </div>
 
-    <div class="grid gap-4 md:grid-cols-2">
-      <RankTrendChart :ranks="visibleRanks" />
-      <RankDonut :counts="rankCounts" />
-    </div>
+      <AdSlot type="mid" />
 
-    <div>
-      <div class="mb-2 text-sm text-muted">直近の対局（モック, ▶公式へ）</div>
-      <MatchTableMock />
+      <div class="rounded-2xl border border-border bg-surface p-4">
+        <div class="mb-2 text-sm text-muted">Rate 推移</div>
+        <div ref="chartBox" style="height: 280px"></div>
+      </div>
+
+      <div class="grid gap-4 md:grid-cols-2">
+        <RankTrendChart :ranks="visibleRanks" />
+        <RankDonut :counts="rankCounts" />
+      </div>
+
+      <div>
+        <div class="mb-2 text-sm text-muted">直近20対局</div>
+        <MatchTable :rows="profile.matches" />
+      </div>
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watchEffect } from "vue";
-import { useRoute, useRouter } from "vue-router";
-import { getLineOptions } from "~/utils/chartTheme";
-import { pct, toneForKpi } from "~/utils/kpi";
+import { ref, computed, watchEffect, onMounted, onBeforeUnmount } from 'vue';
+import { getPlayerProfile, type PlayerProfile } from '~/utils/player';
+import { pct, toneForKpi } from '~/utils/kpi';
+import { getLineOptions } from '~/utils/chartTheme';
+import { useOnVisible } from '~/composables/useOnVisible';
 
 const route = useRoute();
 const router = useRouter();
-const displayName = computed(() =>
-  decodeURIComponent(route.params.name as string)
-);
+const displayName = computed(() => decodeURIComponent(route.params.name as string));
 
-// 最近見たに追加（composableは自動インポート）
+const url = useRequestURL();
+useHead(() => {
+  const canonical = url.origin + url.pathname;
+  const ttl = `${displayName.value} — Paiviz`;
+  const img = `/api/og?title=${encodeURIComponent(displayName.value)}&subtitle=Profile&badge=Paiviz`;
+  return {
+    title: ttl,
+    link: [{ rel: 'canonical', href: canonical }],
+    meta: [
+      { property: 'og:title', content: ttl },
+      { property: 'og:image', content: img },
+      { name: 'twitter:title', content: ttl },
+      { name: 'twitter:image', content: img },
+    ],
+  };
+});
+
+const loading = ref(true);
+const profile = ref<PlayerProfile | null>(null);
 const { push } = useRecent();
-onMounted(() => push(displayName.value));
 
-// Query param: rwindow (対象試合数)
+onMounted(async () => {
+  try {
+    profile.value = await getPlayerProfile(displayName.value);
+    push(displayName.value);
+  } catch {
+    profile.value = null;
+  } finally {
+    loading.value = false;
+  }
+});
+
 const rwindow = ref<number>(Number(route.query.rwindow ?? 120) || 120);
 watchEffect(() => {
   const q = { ...route.query, rwindow: String(rwindow.value) };
   router.replace({ query: q });
 });
 
-// --- dummy KPI for now (replace later with real) ---
-const kpi = {
-  agari: 0.24,
-  houju: 0.11,
-  riichi: 0.19,
-  furo: 0.31,
-  avgRank: 2.48,
-};
-
-// --- dummy rank series (1..4) ---
-const ranks = ref<number[]>(
-  Array.from({ length: 480 }).map(() => {
-    const r = Math.random();
-    if (r < 0.27) return 1;
-    if (r < 0.27 + 0.26) return 2;
-    if (r < 0.27 + 0.26 + 0.25) return 3;
-    return 4;
-  })
-);
 const visibleRanks = computed(() => {
-  const n = rwindow.value >= 9999 ? ranks.value.length : rwindow.value;
-  return ranks.value.slice(-n);
+  const n = rwindow.value >= 9999 ? (profile.value?.ranks.length ?? 0) : rwindow.value;
+  return profile.value?.ranks.slice(-n) ?? [];
 });
 
 const rankCounts = computed(() => {
@@ -107,17 +125,16 @@ const rankCounts = computed(() => {
 
 let chart: any;
 const chartBox = ref<HTMLElement | null>(null);
-
-onMounted(async () => {
-  const echarts = await import("echarts");
-  if (chartBox.value) {
-    chart = echarts.init(chartBox.value);
-    const x = Array.from({ length: 60 }).map((_, i) => i + 1);
-    const y = x.map((i) => 1800 + Math.sin(i / 6) * 100 + Math.random() * 50);
-    chart.setOption(getLineOptions(y, x, { maWindow: 7, showMA: true }));
-  }
-});
-onBeforeUnmount(() => {
-  chart?.dispose?.();
-});
+const renderChart = async () => {
+  if (!chartBox.value || !profile.value) return;
+  const echarts = await import('echarts');
+  chart = echarts.init(chartBox.value);
+  const opt = getLineOptions(profile.value.rate.y, profile.value.rate.x, {
+    maWindow: 7,
+    showMA: true,
+  });
+  chart.setOption(opt);
+};
+useOnVisible(chartBox, renderChart);
+onBeforeUnmount(() => chart?.dispose());
 </script>
