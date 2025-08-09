@@ -54,7 +54,7 @@ const genRows = (): Row[] => {
   }));
 };
 
-const recalc = () => {
+const recalc = (): void => {
   if (!worker) return;
   loading.value = true;
   const sortKeys: RankRequest['sort']['keys'] = [];
@@ -66,8 +66,8 @@ const recalc = () => {
   else sortKeys.push({ key: 'rate', dir: 'desc' });
   sortKeys.push({ key: 'games', dir: 'desc' }, { key: 'name', dir: 'asc' });
   const msg: RankRequest = {
-    rows: rows.value,
-    filter: { favOnly: model.value.favOnly, favs: favList.value },
+    rows: rows.value.map((r) => ({ ...r })),
+    filter: { favOnly: model.value.favOnly, favs: [...favList.value] },
     sort: { keys: sortKeys },
   };
   worker.postMessage(msg);

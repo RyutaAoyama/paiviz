@@ -74,18 +74,12 @@
 </template>
 
 <script setup lang="ts">
-import type {
-  Model,
-  Mode,
-  TableType as Table,
-  Rule,
-  SortKey,
-} from "~/types/rankings";
+import type { Model, Mode, TableType as Table, Rule, SortKey } from '~/types/rankings';
 
 const props = defineProps<{ modelValue: Model }>();
 const emit = defineEmits<{
-  (e: "update:modelValue", v: Model): void;
-  (e: "openDrawer"): void;
+  (e: 'update:modelValue', v: Model): void;
+  (e: 'openDrawer'): void;
 }>();
 const model = reactive({ ...props.modelValue });
 
@@ -93,39 +87,34 @@ watch(
   () => props.modelValue,
   (v) => Object.assign(model, v)
 );
-watch(model, (v) => emit("update:modelValue", { ...v }), { deep: true });
+watch(model, (v) => emit('update:modelValue', { ...v }), { deep: true });
 
 const periodPresets = [
-  { value: "this", label: "今月" },
-  { value: "prev", label: "先月" },
-  { value: "last30d", label: "30日" },
-  { value: "last90d", label: "90日" },
-  { value: "custom", label: "カスタム" },
+  { value: 'this', label: '今月' },
+  { value: 'prev', label: '先月' },
+  { value: 'last30d', label: '30日' },
+  { value: 'last90d', label: '90日' },
+  { value: 'custom', label: 'カスタム' },
 ] as const satisfies ReadonlyArray<{ value: Mode; label: string }>;
 
-const tables = [
-  "一般",
-  "上",
-  "特上",
-  "鳳凰",
-] as const satisfies ReadonlyArray<Table>;
-const rules = ["東南", "東"] as const satisfies ReadonlyArray<Rule>;
+const tables = ['一般', '上', '特上', '鳳凰'] as const satisfies ReadonlyArray<Table>;
+const rules = ['東南', '東'] as const satisfies ReadonlyArray<Rule>;
 const sorts = [
-  { value: "rank", label: "#（順位）" },
-  { value: "rate", label: "Rate" },
-  { value: "games", label: "対局数" },
-  { value: "name", label: "名前" },
+  { value: 'rank', label: '#（順位）' },
+  { value: 'rate', label: 'Rate' },
+  { value: 'games', label: '対局数' },
+  { value: 'name', label: '名前' },
 ] as const satisfies ReadonlyArray<{ value: SortKey; label: string }>;
 
 function set<K extends keyof Model>(k: K, v: Model[K]) {
   (model as any)[k] = v;
 }
 function openDrawer() {
-  emit("openDrawer");
+  emit('openDrawer');
 }
 function onClickMode(v: Mode) {
-  set("mode", v);
-  if (v === "custom") openDrawer(); // カスタム選択でドロワー自動オープン
+  set('mode', v);
+  if (v === 'custom') openDrawer(); // カスタム選択でドロワー自動オープン
 }
 </script>
 
@@ -134,12 +123,8 @@ function onClickMode(v: Mode) {
   display: none;
 }
 .chip {
-  @apply rounded-full border border-[#242A33] px-3 py-1 text-sm text-gray-300 hover:text-gray-100 whitespace-nowrap;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.02),
-    rgba(0, 0, 0, 0.08)
-  );
+  @apply whitespace-nowrap rounded-full border border-[#242A33] px-3 py-1 text-sm text-gray-300 hover:text-gray-100;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(0, 0, 0, 0.08));
 }
 .chip--active {
   @apply border-teal-600 text-teal-300;

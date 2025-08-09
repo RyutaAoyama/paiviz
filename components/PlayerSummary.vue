@@ -2,7 +2,7 @@
   <section class="space-y-4">
     <div class="space-y-1">
       <div class="flex items-center justify-between">
-        <h2 class="text-xl font-semibold truncate">{{ displayName }}</h2>
+        <h2 class="truncate text-xl font-semibold">{{ displayName }}</h2>
         <StarButton :name="displayName" />
       </div>
       <div class="text-xs text-muted">
@@ -11,32 +11,16 @@
     </div>
 
     <div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
-      <KpiCard
-        label="和了率"
-        :value="pct(kpi.agari)"
-        :tone="toneForKpi('agari', kpi.agari)"
-      >
+      <KpiCard label="和了率" :value="pct(kpi.agari)" :tone="toneForKpi('agari', kpi.agari)">
         <DiffBadge v-if="peer" kpi="agari" :delta="kpi.agari - peer.agari" />
       </KpiCard>
-      <KpiCard
-        label="放銃率"
-        :value="pct(kpi.houju)"
-        :tone="toneForKpi('houju', kpi.houju)"
-      >
+      <KpiCard label="放銃率" :value="pct(kpi.houju)" :tone="toneForKpi('houju', kpi.houju)">
         <DiffBadge v-if="peer" kpi="houju" :delta="kpi.houju - peer.houju" />
       </KpiCard>
-      <KpiCard
-        label="立直率"
-        :value="pct(kpi.riichi)"
-        :tone="toneForKpi('riichi', kpi.riichi)"
-      >
+      <KpiCard label="立直率" :value="pct(kpi.riichi)" :tone="toneForKpi('riichi', kpi.riichi)">
         <DiffBadge v-if="peer" kpi="riichi" :delta="kpi.riichi - peer.riichi" />
       </KpiCard>
-      <KpiCard
-        label="副露率"
-        :value="pct(kpi.furo)"
-        :tone="toneForKpi('furo', kpi.furo)"
-      >
+      <KpiCard label="副露率" :value="pct(kpi.furo)" :tone="toneForKpi('furo', kpi.furo)">
         <DiffBadge v-if="peer" kpi="furo" :delta="kpi.furo - peer.furo" />
       </KpiCard>
       <KpiCard
@@ -44,12 +28,7 @@
         :value="kpi.avgRank.toFixed(2)"
         :tone="toneForKpi('avgRank', kpi.avgRank)"
       >
-        <DiffBadge
-          v-if="peer"
-          kpi="avgRank"
-          :delta="kpi.avgRank - peer.avgRank"
-          :percent="false"
-        />
+        <DiffBadge v-if="peer" kpi="avgRank" :delta="kpi.avgRank - peer.avgRank" :percent="false" />
       </KpiCard>
     </div>
 
@@ -58,7 +37,7 @@
         <span>Rate 推移</span>
         <span class="text-xs">凡例: Rate / MA7</span>
       </div>
-      <div style="height: 220px" ref="chartBox"></div>
+      <div ref="chartBox" style="height: 220px"></div>
     </div>
 
     <div class="grid gap-4 md:grid-cols-2">
@@ -74,10 +53,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch } from "vue";
-import { getLineOptions } from "~/utils/chartTheme";
-import { pct, toneForKpi } from "~/utils/kpi";
-import { useOnVisible } from "~/composables/useOnVisible";
+import { ref, reactive, computed, watch } from 'vue';
+import { getLineOptions } from '~/utils/chartTheme';
+import { pct, toneForKpi } from '~/utils/kpi';
+import { useOnVisible } from '~/composables/useOnVisible';
 
 const props = withDefaults(
   defineProps<{
@@ -110,7 +89,7 @@ watch(
 // 現在のRate
 const currentRate = computed(() => {
   const arr = me.rate.value;
-  return arr.length ? arr[arr.length - 1] : "--";
+  return arr.length ? arr[arr.length - 1] : '--';
 });
 
 // 可視範囲の着順配列
@@ -133,7 +112,7 @@ const peer = computed(() => props.peerKpi ?? null);
 let chart: any;
 const chartBox = ref<HTMLElement | null>(null);
 async function renderRate() {
-  const echarts = await import("echarts");
+  const echarts = await import('echarts');
   if (!chartBox.value) return;
   if (chart) chart.dispose();
   chart = echarts.init(chartBox.value);
@@ -143,9 +122,9 @@ async function renderRate() {
     showMA: true,
   });
   if (Array.isArray(opt.series)) {
-    if (opt.series[0]) opt.series[0].name = "Rate";
-    if (opt.series[1]) opt.series[1].name = "MA7";
-    opt.legend = { data: ["Rate", "MA7"], top: 0 };
+    if (opt.series[0]) opt.series[0].name = 'Rate';
+    if (opt.series[1]) opt.series[1].name = 'MA7';
+    opt.legend = { data: ['Rate', 'MA7'], top: 0 };
   }
   chart.setOption(opt);
 }

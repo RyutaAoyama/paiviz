@@ -5,13 +5,15 @@
       class="mt-1 text-2xl font-semibold tabular-nums"
       :class="{
         'text-[var(--jade)]': tone === 'good',
-        'text-[var(--warn)]': tone === 'bad'
+        'text-[var(--warn)]': tone === 'bad',
       }"
-    >{{ value }}</div>
+    >
+      {{ value }}
+    </div>
     <slot />
   </div>
 </template>
 <script setup lang="ts">
-import type { Tone } from '~/utils/kpi'
-defineProps<{ label: string; value: string | number; tone?: Tone }>()
+import type { Tone } from '~/utils/kpi';
+defineProps<{ label: string; value: string | number; tone?: Tone }>();
 </script>

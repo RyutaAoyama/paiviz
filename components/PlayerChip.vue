@@ -7,5 +7,5 @@
   </NuxtLink>
 </template>
 <script setup lang="ts">
-defineProps<{ name: string }>()
+defineProps<{ name: string }>();
 </script>

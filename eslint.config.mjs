@@ -17,8 +17,8 @@ export default [
       '.vercel/**',
       'coverage/**',
       'public/**',
-      'functions/**/.wrangler/**'
-    ]
+      'functions/**/.wrangler/**',
+    ],
   },
 
   // Base JS rules
@@ -78,8 +78,8 @@ export default [
         useRankingQuery: 'readonly',
         useRecent: 'readonly',
         useSwipe: 'readonly',
-        useToast: 'readonly'
-      }
+        useToast: 'readonly',
+      },
     },
     rules: {
       // Nuxtでは単語1つのコンポーネント名がありうる
@@ -87,8 +87,8 @@ export default [
       // Nuxtの自動インポートを使うため no-undef は無効化
       'no-undef': 'off',
       // まずは導入優先で any の厳格さは下げる
-      '@typescript-eslint/no-explicit-any': 'warn'
-    }
+      '@typescript-eslint/no-explicit-any': 'warn',
+    },
   },
 
   // Ensure .vue SFCs parse with Vue parser + TS inside <script>
@@ -100,9 +100,9 @@ export default [
         parser: tseslint.parser,
         ecmaVersion: 'latest',
         sourceType: 'module',
-        extraFileExtensions: ['.vue']
-      }
-    }
+        extraFileExtensions: ['.vue'],
+      },
+    },
   },
 
   // Plain TS/JS files
@@ -112,10 +112,8 @@ export default [
       parser: tseslint.parser,
       parserOptions: {
         ecmaVersion: 'latest',
-        sourceType: 'module'
-      }
-    }
-  }
+        sourceType: 'module',
+      },
+    },
+  },
 ];
-
-

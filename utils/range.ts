@@ -1,10 +1,10 @@
 export function todayYMD(d = new Date()): string {
-  const z = (n: number) => String(n).padStart(2, "0");
+  const z = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
 }
 
 export function addDays(ymd: string, delta: number): string {
-  const [y, m, d] = ymd.split("-").map(Number);
+  const [y, m, d] = ymd.split('-').map(Number);
   const dt = new Date(y, m - 1, d);
   dt.setDate(dt.getDate() + delta);
   return todayYMD(dt);
@@ -23,13 +23,13 @@ export function resolveRange(mode: string, now = new Date()) {
   const lastPrevYMD = todayYMD(lastPrev);
 
   switch (mode) {
-    case "this":
+    case 'this':
       return { from: firstThisYMD, to: toYMD };
-    case "prev":
+    case 'prev':
       return { from: firstPrevYMD, to: lastPrevYMD };
-    case "last30d":
+    case 'last30d':
       return { from: addDays(toYMD, -29), to: toYMD };
-    case "last90d":
+    case 'last90d':
       return { from: addDays(toYMD, -89), to: toYMD };
     default:
       return {};
