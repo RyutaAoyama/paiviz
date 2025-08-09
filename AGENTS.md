@@ -34,12 +34,24 @@ Codex などのエージェントは、ここで定義するルールに従っ�
 
 ---
 
+## Lint/Format ガード（必読）
+
+- **コミット前（pre-commit）**: 差分に対して `eslint --fix` と `prettier --write` を自動実行（lint-staged）。
+  - エラーが残る場合はコミットは失敗します。必ず修正して再実行してください。
+  - `--no-verify` でのフック回避は禁止。
+- **プッシュ前（pre-push）**: リポジトリ全体に `npm run lint` を実行。エラーがある場合はプッシュ不可。
+- **ローカル確認コマンド**
+  - Lint: `npm run lint` / 自動修正: `npm run lint:fix`
+  - フォーマット確認: `npm run format` / 自動整形: `npm run format:write`
+- **DoD（受け入れ基準）**: すべての変更は lint/format をパスしていること。
+
+---
+
 ## 公開 API（契約）互換性ガイド
 
 UI の安定性を守るため、以下の「契約」を破る変更は禁止。変更が必要な場合は必ず後方互換を確保。
 
 - 対象となる契約
-
   - **Composables**（例：`useFavorites` の返却プロパティ名・型）
   - **Component の props / emits**
   - **Route パラメータ/クエリ**
@@ -47,14 +59,12 @@ UI の安定性を守るため、以下の「契約」を破る変更は禁止�
   - **ストレージのキー/シリアライズ形式**（例：`localStorage` の `paiviz:favs`）
 
 - 破壊的変更の例（禁止）
-
   - 返却プロパティのリネーム（`isFav` → `has` など）
   - 返却プロパティの削除・型変更
   - 既存 props / emits の名称・型変更
   - ストレージの JSON 形式を互換なく変更
 
 - 変更手順（チェックリスト）
-
   1. 参照元を全検索（例：`isFav\(` や `useFavorites()` の使用箇所をリポジトリ全体で検索）
   2. 後方互換のエイリアスを追加（例：`return { has, isFav: has, ... }`）
   3. 型で守る：返却型を明示し、誤ったプロパティ名を検知できるようにする
@@ -197,6 +207,7 @@ export const useFavorites = (): FavoritesApi => {
 - [ ] キーボード操作 OK（フォーカス抜け・トラップなし）
 - [ ] 共有/OG メタが適切
 - [ ] コミットは日本語で粒度適切
+- [ ] Lint/Prettier を通過（pre-commit / pre-push フックもグリーン）
 
 ---
 
