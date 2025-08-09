@@ -1,4 +1,26 @@
-export type Tone = "good" | "bad" | "neutral";
+export type KPI = {
+  agari: number;
+  houju: number;
+  riichi: number;
+  furo: number;
+  avgRank: number;
+};
+
+export const getPlayerKpi = async (name: string): Promise<KPI | null> => {
+  if (!name) return null;
+  let seed = 0;
+  for (const ch of name) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+  const rand = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32;
+  return {
+    agari: 0.18 + rand() * 0.1,
+    houju: 0.08 + rand() * 0.07,
+    riichi: 0.15 + rand() * 0.1,
+    furo: 0.2 + rand() * 0.3,
+    avgRank: 1.8 + rand() * 1.4,
+  };
+};
+
+export type Tone = 'good' | 'bad' | 'neutral';
 
 export function toneForKpi(
   key: string,
@@ -11,27 +33,27 @@ export function toneForKpi(
     avgRank: { good: 2.25, bad: 2.75 },
   }
 ): Tone {
-  const rev = new Set(["houju", "avgRank"]);
+  const rev = new Set(['houju', 'avgRank']);
   const t = (th as any)[key];
-  if (!t) return "neutral";
+  if (!t) return 'neutral';
   if (rev.has(key)) {
-    if (value < t.good) return "good";
-    if (value > t.bad) return "bad";
+    if (value < t.good) return 'good';
+    if (value > t.bad) return 'bad';
   } else {
-    if (value > t.good) return "good";
-    if (value < t.bad) return "bad";
+    if (value > t.good) return 'good';
+    if (value < t.bad) return 'bad';
   }
-  return "neutral";
+  return 'neutral';
 }
 
 export function toneForDiff(key: string, delta: number): Tone {
-  if (Math.abs(delta) < 1e-9) return "neutral";
-  const rev = new Set(["houju", "avgRank"]);
+  if (Math.abs(delta) < 1e-9) return 'neutral';
+  const rev = new Set(['houju', 'avgRank']);
   const positiveIsGood = !rev.has(key);
   const good = delta > 0 ? positiveIsGood : !positiveIsGood;
-  return good ? "good" : "bad";
+  return good ? 'good' : 'bad';
 }
 
 export function pct(n: number, digits = 1) {
-  return (n * 100).toFixed(digits) + "%";
+  return (n * 100).toFixed(digits) + '%';
 }
