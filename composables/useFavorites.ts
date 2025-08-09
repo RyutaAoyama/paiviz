@@ -7,7 +7,11 @@ const load = () => {
     favs.value = new Set(JSON.parse(s || '[]'))
   } catch { favs.value = new Set() }
 }
-const save = () => localStorage.setItem(KEY, JSON.stringify([...favs.value]))
+const save = (): void => {
+  if (process.client) {
+    localStorage.setItem(KEY, JSON.stringify([...favs.value]))
+  }
+}
 
 export const useFavorites = () => {
   if (process.client && favs.value.size === 0) load()
