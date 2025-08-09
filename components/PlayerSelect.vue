@@ -34,8 +34,8 @@ const props = withDefaults(defineProps<{ modelValue: string; placeholder?: strin
 });
 const emit = defineEmits<{ (e: 'update:modelValue', v: string): void }>();
 const open = ref(false);
-const { favs } = useFavorites();
-const { recents } = useRecent();
+const { list: favs } = useFavorites();
+const { recent: recents } = useRecent();
 const q = ref(props.modelValue);
 
 watch(

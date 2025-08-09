@@ -16,9 +16,7 @@
         :key="c.key"
         class="px-3 py-2"
         role="columnheader"
-        :aria-sort="
-          props.sortKey === c.key ? (props.sortDir === 'asc' ? 'ascending' : 'descending') : 'none'
-        "
+        :aria-sort="sortKey === c.key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'"
       >
         {{ c.label }}
       </div>
@@ -28,31 +26,33 @@
     <div
       ref="viewport"
       class="relative overflow-auto"
-      :style="{ height: height + 'px' }"
+      :style="{ height: vh + 'px' }"
       @scroll="onScroll"
     >
-      <!-- 全体高（ダミー） -->
+      <!-- 全体高（スクロール用ダミー） -->
       <div :style="{ height: totalHeight + 'px' }"></div>
+
       <!-- 可視領域 -->
       <div class="absolute left-0 right-0" :style="{ transform: `translateY(${offsetY}px)` }">
         <div
           v-for="(row, i) in visibleRows"
           :key="row[keyField] ?? i"
-          class="grid items-center text-sm text-gray-200"
-          :class="start + i === active ? 'bg-white/10' : 'hover:bg-white/5'"
-          :style="{ gridTemplateColumns: colTemplate, height: rowHeight + 'px' }"
+          class="grid items-center text-sm text-gray-200 hover:bg-white/5"
+          :style="{ gridTemplateColumns: colTemplate, height: rowH + 'px' }"
           role="row"
           :aria-selected="start + i === active"
+          data-row
         >
           <div v-for="c in columns" :key="c.key" class="px-3">
-            <component :is="c.render ?? 'span'" v-bind="buildCellProps(row, c)">{{
-              row[c.key]
-            }}</component>
+            <component :is="c.render ?? 'span'" v-bind="buildCellProps(row, c)">
+              {{ row[c.key] }}
+            </component>
           </div>
         </div>
       </div>
     </div>
-    <!-- フッタ（件数） -->
+
+    <!-- フッタ -->
     <div class="border-t border-[#242A33] px-3 py-2 text-xs text-gray-400">
       表示: {{ rows.length }} 件
     </div>
@@ -61,6 +61,7 @@
 
 <script setup lang="ts">
 type Col = { key: string; label: string; width?: string; render?: any };
+
 const props = defineProps<{
   rows: any[];
   columns: Col[];
@@ -71,19 +72,29 @@ const props = defineProps<{
   sortDir?: 'asc' | 'desc';
 }>();
 
-const rowHeight = props.rowHeight ?? 44;
-const height = props.height ?? 480;
-const keyField = props.keyField ?? 'name';
+// 数値キャスト（リアクティブ）
+const rowH = computed(() => {
+  const n = Number(props.rowHeight ?? 44);
+  return Number.isFinite(n) && n > 0 ? n : 44;
+});
+const vh = computed(() => {
+  const n = Number(props.height ?? 480);
+  return Number.isFinite(n) && n > 0 ? n : 480;
+});
+const keyField = computed(() => props.keyField ?? 'name');
+const sortKey = computed(() => props.sortKey ?? '');
+const sortDir = computed(() => props.sortDir ?? 'desc');
 
 const viewport = ref<HTMLElement | null>(null);
 const start = ref(0);
 const end = ref(0);
-const buffer = 6; // 上下に余分に描画
-const colTemplate = computed(() => (props.columns ?? []).map((c) => c.width ?? '1fr').join(' '));
+const buffer = 6; // 先読み
 const active = ref(0);
 
-const totalHeight = computed(() => (props.rows?.length ?? 0) * rowHeight);
-const page = Math.ceil(height / rowHeight);
+const colTemplate = computed(() => (props.columns ?? []).map((c) => c.width ?? '1fr').join(' '));
+
+const totalHeight = computed(() => (props.rows?.length ?? 0) * rowH.value);
+const page = computed(() => Math.ceil(vh.value / rowH.value));
 
 const clamp = (): void => {
   const v = viewport.value;
@@ -93,35 +104,60 @@ const clamp = (): void => {
     end.value = 0;
     return;
   }
-  const s = Math.floor(v.scrollTop / rowHeight);
+  const s = Math.floor((v.scrollTop || 0) / rowH.value);
   start.value = Math.max(0, s - buffer);
-  end.value = Math.min(len, s + page + buffer);
+  end.value = Math.min(len, s + page.value + buffer);
 };
+
+const reset = (): void => {
+  // ★ rows更新時に初期位置へ戻す（今回の主因）
+  if (viewport.value) viewport.value.scrollTop = 0;
+  start.value = 0;
+  end.value = Math.min(props.rows?.length ?? 0, page.value + buffer);
+};
+
 const onScroll = (): void => clamp();
+
 onMounted(() => {
-  clamp();
+  reset(); // 初回は確実に0行目から
+  nextTick(() => clamp());
   window.addEventListener('resize', clamp);
 });
 onBeforeUnmount(() => window.removeEventListener('resize', clamp));
 
-const offsetY = computed(() => start.value * rowHeight);
+// ★ rows が変わるたびに reset -> clamp
+watch(
+  () => props.rows,
+  () => {
+    // 新しい配列が来たら先頭から描画
+    reset();
+    nextTick(() => clamp());
+  },
+  { deep: false }
+);
+
+// 行高/高さの変化にも追従
+watch([rowH, vh], () => nextTick(() => clamp()));
+
+const offsetY = computed(() => start.value * rowH.value);
 const visibleRows = computed(() => props.rows?.slice(start.value, end.value) ?? []);
 
 const buildCellProps = (row: any, c: Col) => ({ row, value: row[c.key], col: c });
 
-// 公開メソッド：現在の可視行（CSVなどで利用したい場合）
-defineExpose({ getVisible: () => visibleRows.value });
+// 公開メソッド
+defineExpose({ getVisible: () => visibleRows.value, reset });
 
+// キーボード操作
 const emit = defineEmits<{ (e: 'enter', row: any): void }>();
-const scrollToActive = () => {
+const scrollToActive = (): void => {
   const v = viewport.value;
   if (!v) return;
-  const top = active.value * rowHeight;
+  const top = active.value * rowH.value;
   if (top < v.scrollTop) v.scrollTop = top;
-  else if (top + rowHeight > v.scrollTop + height) v.scrollTop = top - height + rowHeight;
+  else if (top + rowH.value > v.scrollTop + vh.value) v.scrollTop = top - vh.value + rowH.value;
   clamp();
 };
-const onKey = (e: KeyboardEvent) => {
+const onKey = (e: KeyboardEvent): void => {
   if (e.key === 'ArrowDown') {
     active.value = Math.min((props.rows?.length ?? 0) - 1, active.value + 1);
     scrollToActive();

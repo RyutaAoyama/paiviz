@@ -2,8 +2,10 @@
 import { h, ref, onMounted, watch, resolveComponent, computed } from 'vue';
 import { getRankingRows, type RankingRow } from '~/providers/rankings';
 import type { Model, TableType, Rule } from '~/types/rankings';
+
 const { model, syncToUrl } = useRankingQuery();
 const url = useRequestURL();
+
 useHead(() => {
   const q = model.value;
   const period =
@@ -43,8 +45,8 @@ const loading = ref(true);
 const { list: favList } = useFavorites();
 const FavStar = resolveComponent('FavStar');
 
-// テーブルのフィルタとソート（厳密一致）
-function applyFilter(
+// フィルタ + ソート
+const applyFilter = (
   all: Row[],
   q: {
     tableType: TableType;
@@ -54,19 +56,20 @@ function applyFilter(
     sortDir: Model['sortDir'];
   },
   favSet: Set<string>
-) {
+): Row[] => {
   const out = all.filter(
     (r) => r.tableType === q.tableType && r.rule === q.rule && (!q.favOnly || favSet.has(r.name))
   );
   const dir = q.sortDir === 'asc' ? 1 : -1;
-  const sorted = [...out].sort((a, b) => {
+  const coll = new Intl.Collator('ja', { sensitivity: 'base', numeric: true });
+  return [...out].sort((a, b) => {
     if (q.sortKey === 'rate') return (a.rate - b.rate) * dir;
     if (q.sortKey === 'games') return (a.games - b.games) * dir;
-    if (q.sortKey === 'name') return a.name.localeCompare(b.name) * dir;
-    return (a.rank - b.rank) * dir;
+    if (q.sortKey === 'name') return coll.compare(a.name, b.name) * dir;
+    return 0;
   });
-  return sorted;
-}
+};
+
 const filtered = computed<Row[]>(() =>
   applyFilter(rows.value, model.value, new Set(favList.value))
 );
@@ -75,13 +78,12 @@ const recalc = async (): Promise<void> => {
   loading.value = true;
   rows.value = await getRankingRows();
   loading.value = false;
-  if (process.client) (window as unknown as { __paivizRows?: typeof rows }).__paivizRows = rows; // デバッグ公開
+  if (process.client) (window as unknown as { __paivizRows?: typeof rows }).__paivizRows = rows;
 };
 
 onMounted(() => {
   void recalc();
 });
-
 watch(
   model,
   () => {
@@ -105,7 +107,7 @@ const exportCsv = (): void => {
   downloadCsv(`paiviz_rankings_${ymd}_${q.mode}_${q.tableType}_${q.rule}.csv`, csv);
 };
 
-// テーブル列定義
+// 空状態ショートカット
 const jumpThis = (): void => {
   model.value.mode = 'this';
   syncToUrl();
@@ -115,6 +117,7 @@ const jumpLast30 = (): void => {
   syncToUrl();
 };
 
+// 列定義（rankは行内 index を使う実装なので見た目だけのヘッダ）
 const columns = [
   {
     key: 'fav',
@@ -134,8 +137,6 @@ const columns = [
   <section class="space-y-4">
     <h1 class="text-2xl font-bold">ランキング</h1>
 
-    <!-- （フィルタチップやドロワーは既存のものを継続） -->
-
     <div class="flex items-center gap-2">
       <button
         class="rounded-lg bg-[#0F1115] px-3 py-2 text-sm ring-1 ring-[#242A33]"
@@ -148,9 +149,11 @@ const columns = [
       </button>
       <div class="ml-auto text-xs text-gray-400">表示: {{ filtered.length }} 件</div>
     </div>
+
     <div v-if="loading" class="space-y-2">
       <div v-for="i in 5" :key="i" class="h-10 animate-pulse rounded bg-[#161A20]"></div>
     </div>
+
     <div v-else-if="!filtered.length" class="space-y-4 text-center">
       <p class="text-sm text-gray-400">ランキングが見つかりません</p>
       <div class="flex justify-center gap-2">
@@ -162,6 +165,7 @@ const columns = [
         </button>
       </div>
     </div>
+
     <VirtualTable
       v-else
       :rows="filtered"
