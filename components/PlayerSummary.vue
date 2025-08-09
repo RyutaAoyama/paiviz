@@ -16,28 +16,28 @@
         :value="pct(kpi.agari)"
         :tone="toneForKpi('agari', kpi.agari)"
       >
-        <DiffBadge v-if="peer" :delta="kpi.agari - peer.agari" />
+        <DiffBadge v-if="peer" kpi="agari" :delta="kpi.agari - peer.agari" />
       </KpiCard>
       <KpiCard
         label="放銃率"
         :value="pct(kpi.houju)"
         :tone="toneForKpi('houju', kpi.houju)"
       >
-        <DiffBadge v-if="peer" :delta="kpi.houju - peer.houju" reverse />
+        <DiffBadge v-if="peer" kpi="houju" :delta="kpi.houju - peer.houju" />
       </KpiCard>
       <KpiCard
         label="立直率"
         :value="pct(kpi.riichi)"
         :tone="toneForKpi('riichi', kpi.riichi)"
       >
-        <DiffBadge v-if="peer" :delta="kpi.riichi - peer.riichi" />
+        <DiffBadge v-if="peer" kpi="riichi" :delta="kpi.riichi - peer.riichi" />
       </KpiCard>
       <KpiCard
         label="副露率"
         :value="pct(kpi.furo)"
         :tone="toneForKpi('furo', kpi.furo)"
       >
-        <DiffBadge v-if="peer" :delta="kpi.furo - peer.furo" />
+        <DiffBadge v-if="peer" kpi="furo" :delta="kpi.furo - peer.furo" />
       </KpiCard>
       <KpiCard
         label="平均順位"
@@ -46,9 +46,9 @@
       >
         <DiffBadge
           v-if="peer"
+          kpi="avgRank"
           :delta="kpi.avgRank - peer.avgRank"
           :percent="false"
-          reverse
         />
       </KpiCard>
     </div>
@@ -63,7 +63,7 @@
 
     <div class="grid gap-4 md:grid-cols-2">
       <RankTrendChart :ranks="visibleRanks" />
-      <RankPieChart :ranks="visibleRanks" />
+      <RankDonut :counts="rankCounts" />
     </div>
 
     <div>
@@ -118,6 +118,12 @@ const visibleRanks = computed<number[]>(() => {
   const arr = me.ranks.value ?? [];
   const w = props.rwindow ?? 120;
   return arr.slice(-w);
+});
+
+const rankCounts = computed(() => {
+  const c = [0, 0, 0, 0];
+  for (const r of visibleRanks.value) if (r >= 1 && r <= 4) c[r - 1]++;
+  return c;
 });
 
 // peer側KPI（差分表示用）

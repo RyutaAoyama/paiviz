@@ -74,18 +74,13 @@
 </template>
 
 <script setup lang="ts">
-type Mode = "this" | "prev" | "last30d" | "last90d" | "custom";
-type Table = "一般" | "上" | "特上" | "鳳凰";
-type Rule = "東南" | "東";
-type SortKey = "rate" | "games" | "name" | "rank";
-
-type Model = {
-  mode: Mode;
-  tableType: Table;
-  rule: Rule;
-  sortKey: SortKey;
-  favOnly: boolean;
-};
+import type {
+  Model,
+  Mode,
+  TableType as Table,
+  Rule,
+  SortKey,
+} from "~/types/rankings";
 
 const props = defineProps<{ modelValue: Model }>();
 const emit = defineEmits<{

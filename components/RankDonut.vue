@@ -8,7 +8,7 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, watch } from "vue";
 
-const props = defineProps<{ ranks: number[] }>();
+const props = defineProps<{ counts: number[] }>();
 
 let chart: any;
 const box = ref<HTMLElement | null>(null);
@@ -20,21 +20,16 @@ function getCss(name: string) {
     .trim();
 }
 
-function dist() {
-  const c = [0, 0, 0, 0, 0]; // ignore 0
-  for (const r of props.ranks) c[r]++;
-  return [
-    { name: "1位", value: c[1], itemStyle: { color: getCss("--jade") } },
-    { name: "2位", value: c[2], itemStyle: { color: getCss("--plum") } },
-    { name: "3位", value: c[3], itemStyle: { color: "var(--amber)" } },
-    { name: "4位", value: c[4], itemStyle: { color: getCss("--warn") } },
-  ];
-}
-
 async function render() {
   const echarts = await import("echarts");
   if (!box.value) return;
   chart = echarts.init(box.value);
+  const data = [
+    { value: props.counts[0], name: "1位", itemStyle: { color: getCss("--jade") } },
+    { value: props.counts[1], name: "2位", itemStyle: { color: getCss("--plum") } },
+    { value: props.counts[2], name: "3位", itemStyle: { color: "var(--amber)" } },
+    { value: props.counts[3], name: "4位", itemStyle: { color: getCss("--warn") } },
+  ];
   chart.setOption({
     tooltip: { trigger: "item", formatter: "{b}: {d}% ({c} 回)" },
     series: [
@@ -44,7 +39,7 @@ async function render() {
         avoidLabelOverlap: true,
         itemStyle: { borderColor: getCss("--surface"), borderWidth: 2 },
         label: { formatter: "{b}\n{d}%", color: getCss("--text") },
-        data: dist(),
+        data,
       },
     ],
     animationDuration: 250,
@@ -54,7 +49,8 @@ async function render() {
 onMounted(render);
 onBeforeUnmount(() => chart?.dispose?.());
 watch(
-  () => props.ranks,
-  () => chart?.dispose?.() || render()
+  () => props.counts,
+  () => chart?.dispose?.() || render(),
+  { deep: true }
 );
 </script>

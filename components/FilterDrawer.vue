@@ -18,7 +18,21 @@
         <div class="space-y-5">
           <div>
             <div class="mb-1 text-xs text-muted">期間</div>
-            <DateRangePicker @update="onRange" />
+            <DateRangePicker @update="onUpdate" />
+            <div class="mt-2 flex gap-2 justify-end">
+              <button
+                class="rounded-lg border border-[#242A33] px-3 py-1 text-sm hover:text-text"
+                @click="apply"
+              >
+                適用
+              </button>
+              <button
+                class="rounded-lg border border-[#242A33] px-3 py-1 text-sm hover:text-text"
+                @click="reset"
+              >
+                リセット
+              </button>
+            </div>
           </div>
 
           <label class="flex items-center gap-2 text-sm">
@@ -56,11 +70,20 @@ const emit = defineEmits<{
   (e: "share"): void;
 }>();
 
+const range = ref({ mode: "this", from: "", to: "" });
+
 function close() {
   emit("update:open", false);
 }
-function onRange(p: { mode: string; from: string; to: string }) {
-  emit("range", p);
+function onUpdate(p: { mode: string; from: string; to: string }) {
+  range.value = p;
+}
+function apply() {
+  emit("range", range.value);
+}
+function reset() {
+  range.value = { mode: "this", from: "", to: "" };
+  emit("range", range.value);
 }
 
 const fav = computed({

@@ -70,7 +70,8 @@
           v-if="favOnly && favList.length === 0"
           class="p-6 text-sm text-muted"
         >
-          お気に入りのプレイヤーがありません。プレイヤー詳細ページの★ボタンで登録できます。
+          お気に入りがありません。<NuxtLink to="/" class="text-teal-400">検索</NuxtLink>
+          でプレイヤーを探し、詳細ページで★を押すとここに表示されます。
         </div>
         <div v-else class="p-6 text-sm text-muted">
           条件に合うプレイヤーが見つかりません。フィルタや期間を見直してください。
@@ -138,124 +139,77 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch, onMounted } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { ref, computed, watch, onMounted } from "vue";
 import { downloadCsv } from "@/utils/csv";
 import { createShareLink } from "@/utils/share";
+import { resolveRange } from "~/utils/range";
+import { useRankingQuery } from "~/composables/useRankingQuery";
+import type { SortKey, Mode } from "~/types/rankings";
 
-type Mode = "this" | "prev" | "last30d" | "last90d" | "custom";
-type Table = "一般" | "上" | "特上" | "鳳凰";
-type Rule = "東南" | "東";
-type SortKey = "rank" | "rate" | "games" | "name";
-
-const MODES: readonly Mode[] = ["this", "prev", "last30d", "last90d", "custom"];
-const TABLES: readonly Table[] = ["一般", "上", "特上", "鳳凰"];
-const RULES: readonly Rule[] = ["東南", "東"];
-const SORTS: readonly SortKey[] = ["rank", "rate", "games", "name"];
-
-const asMode = (v: any): Mode => (MODES.includes(v) ? (v as Mode) : "this");
-const asTable = (v: any): Table => (TABLES.includes(v) ? (v as Table) : "特上");
-const asRule = (v: any): Rule => (RULES.includes(v) ? (v as Rule) : "東");
-const asSortKey = (v: any): SortKey =>
-  SORTS.includes(v) ? (v as SortKey) : "rate";
-
-const route = useRoute();
-const router = useRouter();
+const { model, syncToUrl } = useRankingQuery();
 const { isFav, list: favList } = useFavorites();
 const { push: pushToast } = useToast();
+const drawerOpen = ref(false);
 
-const mode = ref<Mode>(asMode(route.query.mode));
-const from = ref(String(route.query.from ?? ""));
-const to = ref(String(route.query.to ?? ""));
-const tableType = ref<Table>(asTable(route.query.tableType));
-const rule = ref<Rule>(asRule(route.query.rule));
-const dense = ref(route.query.dense === "true");
-const favOnly = ref(route.query.favOnly === "true");
-
-const sort = reactive<{ key: SortKey; dir: "asc" | "desc" }>({
-  key: asSortKey(route.query.sortKey),
-  dir: route.query.sortDir === "asc" ? "asc" : "desc",
-});
-
-const chipModel = computed<{
-  mode: Mode;
-  tableType: Table;
-  rule: Rule;
-  sortKey: SortKey;
-  favOnly: boolean;
-}>({
+const chipModel = computed({
   get: () => ({
-    mode: mode.value,
-    tableType: tableType.value,
-    rule: rule.value,
-    sortKey: sort.key,
-    favOnly: favOnly.value,
+    mode: model.value.mode,
+    tableType: model.value.tableType,
+    rule: model.value.rule,
+    sortKey: model.value.sortKey,
+    favOnly: !!model.value.favOnly,
   }),
   set: (v) => {
-    mode.value = v.mode;
-    tableType.value = v.tableType;
-    rule.value = v.rule;
-    sort.key = v.sortKey;
-    favOnly.value = v.favOnly;
+    Object.assign(model.value, v);
+    syncToUrl();
   },
 });
 
-watch(
-  [
-    mode,
-    from,
-    to,
-    tableType,
-    rule,
-    dense,
-    favOnly,
-    () => sort.key,
-    () => sort.dir,
-  ],
-  () => {
-    router.replace({
-      query: {
-        ...route.query,
-        mode: mode.value,
-        from: from.value,
-        to: to.value,
-        tableType: tableType.value,
-        rule: rule.value,
-        dense: String(dense.value),
-        favOnly: String(favOnly.value),
-        sortKey: sort.key,
-        sortDir: sort.dir,
-      },
-    });
-  }
-);
+const favOnly = computed({
+  get: () => !!model.value.favOnly,
+  set: (v: boolean) => {
+    model.value.favOnly = v;
+    syncToUrl();
+  },
+});
 
-const onRange = (p: { mode: string; from: string; to: string }): void => {
-  mode.value = asMode(p.mode);
-  from.value = p.from;
-  to.value = p.to;
-};
+const dense = computed(() => model.value.dense);
+
+function onRange(p: { mode: string; from: string; to: string }) {
+  model.value.mode = p.mode as Mode;
+  if (model.value.mode === "custom") {
+    model.value.from = p.from;
+    model.value.to = p.to;
+  } else {
+    const r = resolveRange(model.value.mode);
+    model.value.from = r.from;
+    model.value.to = r.to;
+  }
+  syncToUrl();
+}
 
 const setSort = (key: SortKey): void => {
-  if (sort.key === key) sort.dir = sort.dir === "asc" ? "desc" : "asc";
+  if (model.value.sortKey === key)
+    model.value.sortDir = model.value.sortDir === "asc" ? "desc" : "asc";
   else {
-    sort.key = key;
-    sort.dir = key === "name" ? "asc" : "desc";
+    model.value.sortKey = key;
+    model.value.sortDir = key === "name" ? "asc" : "desc";
   }
+  syncToUrl();
 };
 const aria = (k: SortKey): "ascending" | "descending" | "none" =>
-  sort.key === k
-    ? sort.dir === "asc"
+  model.value.sortKey === k
+    ? model.value.sortDir === "asc"
       ? "ascending"
       : "descending"
     : "none";
 const icon = (k: SortKey): "asc" | "desc" | "none" =>
-  sort.key === k ? sort.dir : "none";
+  model.value.sortKey === k ? model.value.sortDir : "none";
 
 const loading = ref(true);
 onMounted(() => setTimeout(() => (loading.value = false), 250));
 
-const rowHeight = computed(() => (dense.value ? 40 : 48));
+const rowHeight = computed(() => (model.value.dense ? 40 : 48));
 const randomDateWithin = (days = 120): Date => {
   const to = new Date();
   const from = new Date(to.getTime() - days * 86400000);
@@ -275,37 +229,30 @@ const data = Array.from({ length: total }).map((_, i) => ({
 
 const filtered = computed(() => {
   const list = [...data];
-  if (from.value && to.value) {
-    const fromD = new Date(from.value + "T00:00:00");
-    const toD = new Date(to.value + "T23:59:59");
+  if (model.value.from && model.value.to) {
+    const fromD = new Date(model.value.from + "T00:00:00");
+    const toD = new Date(model.value.to + "T23:59:59");
     return list.filter((r) => r.playedAt >= fromD && r.playedAt <= toD);
-  } else {
-    const days =
-      mode.value === "this"
-        ? 31
-        : mode.value === "prev"
-        ? 31
-        : mode.value === "last90d"
-        ? 90
-        : 30;
-    const fromD = new Date(Date.now() - days * 86400000);
-    return list.filter((r) => r.playedAt >= fromD);
   }
+  return list;
 });
 
 const favFiltered = computed(() =>
-  favOnly.value ? filtered.value.filter((r) => isFav(r.name)) : filtered.value
+  model.value.favOnly
+    ? filtered.value.filter((r) => isFav(r.name))
+    : filtered.value
 );
 
 const sorted = computed(() => {
   const base = [...favFiltered.value];
-  const dir = sort.dir === "asc" ? 1 : -1;
-  if (sort.key === "rank") return dir === 1 ? base : base.reverse();
-  if (sort.key === "name")
+  const dir = model.value.sortDir === "asc" ? 1 : -1;
+  if (model.value.sortKey === "rank") return dir === 1 ? base : base.reverse();
+  if (model.value.sortKey === "name")
     return base.sort((a, b) => a.name.localeCompare(b.name) * dir);
-  if (sort.key === "games")
+  if (model.value.sortKey === "games")
     return base.sort((a, b) => (a.games - b.games) * dir);
-  if (sort.key === "rate") return base.sort((a, b) => (a.rate - b.rate) * dir);
+  if (model.value.sortKey === "rate")
+    return base.sort((a, b) => (a.rate - b.rate) * dir);
   return base;
 });
 
@@ -320,7 +267,7 @@ onMounted(() => {
 watch(dense, () => calcVisible());
 
 const calcVisible = (): void => {
-  const h = viewport.value?.clientHeight ?? (dense.value ? 480 : 560);
+  const h = viewport.value?.clientHeight ?? (model.value.dense ? 480 : 560);
   visibleCount.value = Math.ceil(h / rowHeight.value) + 2;
 };
 const onScroll = (): void => {
@@ -333,7 +280,8 @@ const visibleRows = computed(() =>
 const totalHeight = computed(() => sorted.value.length * rowHeight.value);
 
 const toggleDense = (): void => {
-  dense.value = !dense.value;
+  model.value.dense = !model.value.dense;
+  syncToUrl();
 };
 const isSelected = (i: number): boolean => selected.value === i;
 
@@ -367,17 +315,7 @@ const goDetail = (i: number): void => {
 
 const shareCurrent = async (): Promise<void> => {
   try {
-    const short = await createShareLink("rankings", {
-      mode: mode.value,
-      from: from.value,
-      to: to.value,
-      tableType: tableType.value,
-      rule: rule.value,
-      dense: dense.value,
-      favOnly: favOnly.value,
-      sortKey: sort.key,
-      sortDir: sort.dir,
-    });
+    const short = await createShareLink("rankings", { ...model.value });
     await navigator.clipboard.writeText(short);
     pushToast("共有リンクを作成してコピーしました", "success");
   } catch {
@@ -403,5 +341,4 @@ const onExportCsv = (): void => {
   });
   pushToast("CSVをダウンロードしました", "success");
 };
-const drawerOpen = ref(false);
 </script>

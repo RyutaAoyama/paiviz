@@ -10,23 +10,16 @@
 </template>
 
 <script setup lang="ts">
+import { toneForDiff } from "~/utils/kpi";
+
 const props = withDefaults(
-  defineProps<{
-    delta: number;
-    percent?: boolean;
-    reverse?: boolean;
-  }>(),
-  { percent: true, reverse: false }
+  defineProps<{ delta: number; percent?: boolean; kpi: string }>(),
+  { percent: true }
 );
 
 const isZero = computed(() => Math.abs(props.delta) < 1e-9);
 const sign = computed(() => (props.delta > 0 ? "+" : ""));
-const tone = computed<"good" | "bad" | "neutral">(() => {
-  if (isZero.value) return "neutral";
-  const positiveIsGood = !props.reverse;
-  const good = props.delta > 0 ? positiveIsGood : !positiveIsGood;
-  return good ? "good" : "bad";
-});
+const tone = computed(() => toneForDiff(props.kpi, props.delta));
 const toneClass = computed(() =>
   tone.value === "good"
     ? "bg-[#04261f] text-[#2dd4bf] border border-[#124c43]"
@@ -39,5 +32,7 @@ const text = computed(() =>
     ? (Math.abs(props.delta) * 100).toFixed(1) + "%"
     : Math.abs(props.delta).toFixed(2)
 );
-const title = computed(() => (props.reverse ? "（値が小さいほど良い）" : ""));
+const title = computed(() =>
+  ["houju", "avgRank"].includes(props.kpi) ? "（値が小さいほど良い）" : ""
+);
 </script>
