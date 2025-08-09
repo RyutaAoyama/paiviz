@@ -1,2 +1,3 @@
 User-agent: *
 Allow: /
+Sitemap: https://paiviz.app/sitemap.xml

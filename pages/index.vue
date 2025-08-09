@@ -62,8 +62,7 @@
         class="rounded-2xl border border-border bg-surface p-6 text-sm text-muted"
       >
         お気に入りや最近のプレイヤーがありません。<br />
-        右上の検索からプレイヤーを探して、プレイヤーページで ★
-        を押すとここに表示されます。
+        右上の検索からプレイヤーを探して、プレイヤーページで ★ を押すとここに表示されます。
       </div>
 
       <div v-else class="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
@@ -72,14 +71,12 @@
           :key="p"
           class="rounded-2xl border border-border bg-surface p-4 hover:outline hover:outline-1 hover:outline-[#1b2230]"
         >
-          <div class="mb-2 text-base font-semibold truncate">
+          <div class="mb-2 truncate text-base font-semibold">
             <span class="mr-1 text-jade">★</span>{{ p }}
           </div>
           <div class="text-sm text-muted">小KPI: 和了率/放銃率/平均順位</div>
           <div class="mt-3">
-            <NuxtLink
-              :to="`/player/${encodeURIComponent(p)}`"
-              class="text-teal-400"
+            <NuxtLink :to="`/player/${encodeURIComponent(p)}`" class="text-teal-400"
               >詳細へ →</NuxtLink
             >
           </div>
@@ -90,6 +87,27 @@
 </template>
 
 <script setup lang="ts">
+const url = useRequestURL();
+useHead(() => {
+  const canonical = url.origin + url.pathname;
+  const ttl = 'Paiviz — 天鳳の成績を見やすく';
+  const desc = '天鳳の成績を高速に可視化する非公式ビューア';
+  const img = `/api/og?title=${encodeURIComponent('Paiviz')}&subtitle=${encodeURIComponent('天鳳成績ビューア')}&badge=Paiviz&theme=teal`;
+  return {
+    title: ttl,
+    link: [{ rel: 'canonical', href: canonical }],
+    meta: [
+      { property: 'og:title', content: ttl },
+      { property: 'og:description', content: desc },
+      { property: 'og:image', content: img },
+      { name: 'twitter:title', content: ttl },
+      { name: 'twitter:description', content: desc },
+      { name: 'twitter:image', content: img },
+      { name: 'description', content: desc },
+    ],
+  };
+});
+
 // SSRでも安全な“空配列”初期化
 type Row = {
   id: number;
@@ -109,7 +127,7 @@ onMounted(() => {
   // クライアント側でだけ擬似データ投入（SSR時は空 → 0件表示で安全）
   rows.value = Array.from({ length: 10 }).map((_, i) => ({
     id: i,
-    name: `Player_${i.toString().padStart(4, "0")}`,
+    name: `Player_${i.toString().padStart(4, '0')}`,
     rate: Math.floor(1800 + Math.random() * 600),
     games: Math.floor(50 + Math.random() * 300),
     spark: Array.from({ length: 12 }, () => Math.floor(1 + Math.random() * 4)),
@@ -117,15 +135,9 @@ onMounted(() => {
 });
 
 // null セーフな派生
-const rowsSafe = computed<Row[]>(() =>
-  Array.isArray(rows.value) ? rows.value : []
-);
-const favSafe = computed<string[]>(() =>
-  Array.isArray(favs.value) ? favs.value : []
-);
-const recSafe = computed<string[]>(() =>
-  Array.isArray(recent.value) ? recent.value : []
-);
+const rowsSafe = computed<Row[]>(() => (Array.isArray(rows.value) ? rows.value : []));
+const favSafe = computed<string[]>(() => (Array.isArray(favs.value) ? favs.value : []));
+const recSafe = computed<string[]>(() => (Array.isArray(recent.value) ? recent.value : []));
 
 // 注目プレイヤー: お気に入り優先 → 最近 → シード
 const featuredSafe = computed<string[]>(() => {
@@ -140,13 +152,13 @@ const featuredSafe = computed<string[]>(() => {
   }
   if (out.length < 6) {
     const seed = [
-      "ASAPIN",
-      "独歩",
-      "就活生＠川村軍",
-      "福地誠",
-      "コーラください",
-      "太くないお",
-      "すずめクレイジー",
+      'ASAPIN',
+      '独歩',
+      '就活生＠川村軍',
+      '福地誠',
+      'コーラください',
+      '太くないお',
+      'すずめクレイジー',
     ];
     for (const n of seed) {
       if (out.length >= 6) break;
