@@ -1,12 +1,15 @@
 const KEY = 'paiviz:favs';
 const favs = ref<Set<string>>(new Set());
 
-const load = () => {
+const DEFAULT = ['P-0001', 'P-0002', 'P-0003', 'P-0004', 'P-0005'];
+const load = (): void => {
   try {
     const s = localStorage.getItem(KEY);
-    favs.value = new Set(JSON.parse(s || '[]'));
+    const arr = JSON.parse(s || '[]');
+    const list = Array.isArray(arr) && arr.length ? arr : DEFAULT;
+    favs.value = new Set(list);
   } catch {
-    favs.value = new Set();
+    favs.value = new Set(DEFAULT);
   }
 };
 const save = (): void => {
