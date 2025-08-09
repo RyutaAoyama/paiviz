@@ -10,8 +10,8 @@
     >
       <NuxtPage />
     </main>
+    <Toast />
     <AppFooter />
-    <ToastHost />
     <BottomNav />
   </div>
 </template>

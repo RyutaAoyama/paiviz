@@ -80,9 +80,9 @@ const shareCurrent = async (): Promise<void> => {
       rwindow: rwindow.value,
     });
     await navigator.clipboard.writeText(short);
-    pushToast("共有リンクを作成してコピーしました", "success");
+    pushToast("共有リンクを作成してコピーしました");
   } catch {
-    pushToast("共有リンクの作成に失敗しました", "error");
+    pushToast("共有リンクの作成に失敗しました");
   }
 };
 
@@ -93,7 +93,7 @@ const swap = (): void => {
   router.replace({
     query: { ...route.query, a: a.value, b: b.value, rwindow: String(rwindow.value) },
   });
-  pushToast("A/Bを入れ替えました", "success");
+  pushToast("A/Bを入れ替えました");
 };
 
 useSwipe(root, { onSwipeLeft: swap, onSwipeRight: swap });
