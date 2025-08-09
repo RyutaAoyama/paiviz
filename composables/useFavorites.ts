@@ -1,19 +1,18 @@
-export function useFavorites() {
-  const key = "paiviz:favs";
-  const list = ref<string[]>([]);
-  if (process.client) {
-    try {
-      const raw = localStorage.getItem(key);
-      if (raw) list.value = JSON.parse(raw);
-    } catch {}
-  }
-  function toggle(name: string) {
-    const set = new Set(list.value);
-    if (set.has(name)) set.delete(name);
-    else set.add(name);
-    list.value = Array.from(set).slice(0, 200);
-    if (process.client) localStorage.setItem(key, JSON.stringify(list.value));
-  }
-  const isFav = (name: string) => list.value.includes(name);
-  return { list, toggle, isFav };
+const KEY = 'paiviz:favs'
+const favs = ref<Set<string>>(new Set())
+
+const load = () => {
+  try {
+    const s = localStorage.getItem(KEY)
+    favs.value = new Set(JSON.parse(s || '[]'))
+  } catch { favs.value = new Set() }
+}
+const save = () => localStorage.setItem(KEY, JSON.stringify([...favs.value]))
+
+export const useFavorites = () => {
+  if (process.client && favs.value.size === 0) load()
+  const toggle = (name:string) => { favs.value.has(name) ? favs.value.delete(name) : favs.value.add(name); save() }
+  const has = (name:string) => favs.value.has(name)
+  const list = computed(() => [...favs.value])
+  return { list, has, toggle }
 }

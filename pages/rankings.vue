@@ -1,12 +1,20 @@
 <script setup lang="ts">
+import { h } from 'vue'
 const { model } = useRankingQuery()
-
-useHead({
-  title: 'ランキング — Paiviz',
-  meta: [
-    { property: 'og:title', content: 'Paiviz ランキング' },
-    { property: 'og:description', content: '期間や卓種を絞って天鳳のランキングを確認' }
-  ]
+useHead(() => {
+  const q = model.value
+  const ttl = `ランキング（${q.mode} / ${q.tableType} / ${q.rule}）— Paiviz`
+  const desc = `天鳳のランキング。期間: ${q.mode}${q.mode==='custom' && q.from && q.to ? `（${q.from}〜${q.to}）` : ''} / 卓: ${q.tableType} / ルール: ${q.rule}`
+  return {
+    title: ttl,
+    meta: [
+      { property:'og:title', content: ttl },
+      { property:'og:description', content: desc },
+      { name:'twitter:title', content: ttl },
+      { name:'twitter:description', content: desc },
+      { name:'description', content: desc }
+    ]
+  }
 })
 
 // TODO: 実データに差し替え。今はモック行（安定動作確認用）
@@ -19,11 +27,11 @@ const allRows = ref<Row[]>(Array.from({length: 500}, (_,i)=> ({
   trend: '↗︎'
 })))
 
-// お気に入りフィルタ（将来：useFavorites 実データに接続）
-const favSet = new Set<string>([]) // ここを実装に合わせて置換
+// お気に入りフィルタ
+const { has } = useFavorites()
 const filtered = computed(() => {
   let rows = allRows.value
-  if (model.value.favOnly) rows = rows.filter(r => favSet.has(r.name))
+  if (model.value.favOnly) rows = rows.filter(r => has(r.name))
   // ルール/卓など他フィルタはここに適用
   // ソート
   const { sortKey, sortDir } = model.value
@@ -53,6 +61,7 @@ const exportCsv = (): void => {
 
 // テーブル列定義
 const columns = [
+  { key:'fav',   label:'',      width:'72px', render: { render: (p:any) => h('div', { class:'text-xs' }, h('fav-star', { name: p.row.name })) } },
   { key:'rank',  label:'#',     width:'64px' },
   { key:'name',  label:'名前',  width:'1fr' },
   { key:'rate',  label:'Rate',  width:'120px' },
