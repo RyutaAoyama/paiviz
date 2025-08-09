@@ -1,18 +1,12 @@
-import { ref } from 'vue'
-
-type ToastItem = { id: number; text: string; type?: 'info'|'success'|'warn'|'error'; timeout?: number }
-const list = ref<ToastItem[]>([])
+type Toast = { id:number; message:string; timeout?:number }
+const list = ref<Toast[]>([])
 let seq = 1
-
 export function useToast() {
-  function push(text: string, type: ToastItem['type']='success', timeout=2200) {
+  function push(message:string, timeout=3000) {
     const id = seq++
-    list.value.push({ id, text, type, timeout })
-    setTimeout(() => remove(id), timeout)
+    list.value.push({ id, message, timeout })
+    if (timeout>0) setTimeout(()=> remove(id), timeout)
   }
-  function remove(id: number) {
-    const i = list.value.findIndex(t => t.id === id)
-    if (i >= 0) list.value.splice(i, 1)
-  }
-  return { toasts: list, push, remove }
+  function remove(id:number){ list.value = list.value.filter(t=>t.id!==id) }
+  return { list, push, remove }
 }

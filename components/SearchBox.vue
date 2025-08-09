@@ -48,9 +48,10 @@
 </template>
 
 <script setup lang="ts">
+import { getSuggest } from '~/utils/api'
+import type { SuggestItem } from '~/utils/api'
+
 type Section = 'fav' | 'recent' | 'suggest'
-type SuggestItem = { name: string; source: string }
-type SuggestResponse = { suggestions: SuggestItem[] }
 
 const q = ref('')
 const open = ref(false)
@@ -85,15 +86,16 @@ watch(q, () => {
 
 async function fetchSuggest(text: string) {
   loading.value = true
-  try{
-    const url = `/api/suggest?q=${encodeURIComponent(text)}&limit=10`
-    const r = await fetch(url)
-    const js = (await r.json()) as unknown as Partial<SuggestResponse>
-    suggestions.value = Array.isArray(js.suggestions) ? js.suggestions : []
+  try {
+    suggestions.value = await getSuggest(text, 10)
     activeSection.value = 'suggest'
     activeIndex.value = 0
-  } catch {
+  } catch (e: any) {
     suggestions.value = []
+    const { push } = useToast()
+    const status = e?.status
+    if (status === 429) push('検索が混み合っています。少し待ってから再試行してください。')
+    else push('検索に失敗しました。ネットワークをご確認ください。')
   } finally {
     loading.value = false
   }

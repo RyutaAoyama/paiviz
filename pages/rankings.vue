@@ -113,18 +113,15 @@
       </div>
     </div>
 
+    <div class="mt-2 flex items-center gap-2">
+      <button class="rounded-lg bg-[#0F1115] px-3 py-2 ring-1 ring-[#242A33] text-sm" @click="exportCsv">CSVエクスポート</button>
+      <button class="rounded-lg bg-[#0F1115] px-3 py-2 ring-1 ring-[#242A33] text-sm" @click="shareCurrent">共有リンク作成</button>
+    </div>
+
     <div class="flex items-center justify-between">
       <div class="text-xs text-muted">
         ヒント:
         フィルタはURLに保存されます。スマホでは下部ナビから主要ページに素早く移動できます。
-      </div>
-      <div class="md:hidden flex items-center gap-2">
-        <button
-          class="rounded-lg border border-border px-3 py-1.5 text-sm hover:text-text"
-          @click="shareCurrent"
-        >
-          共有リンク作成
-        </button>
       </div>
     </div>
 
@@ -132,7 +129,7 @@
       v-model:open="drawerOpen"
       v-model:favOnly="favOnly"
       @range="onRange"
-      @exportCsv="onExportCsv"
+      @exportCsv="exportCsv"
       @share="shareCurrent"
     />
   </section>
@@ -140,7 +137,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from "vue";
-import { downloadCsv } from "@/utils/csv";
+import { toCsv, downloadCsv } from "~/utils/csv";
 import { createShareLink } from "@/utils/share";
 import { resolveRange } from "~/utils/range";
 import { useRankingQuery } from "~/composables/useRankingQuery";
@@ -317,28 +314,31 @@ const shareCurrent = async (): Promise<void> => {
   try {
     const short = await createShareLink("rankings", { ...model.value });
     await navigator.clipboard.writeText(short);
-    pushToast("共有リンクを作成してコピーしました", "success");
+    pushToast("共有リンクを作成してコピーしました");
   } catch {
-    pushToast("共有リンクの作成に失敗しました", "error");
+    pushToast("共有リンクの作成に失敗しました");
   }
 };
 
-const onExportCsv = (): void => {
-  const header = ["rank", "name", "rate", "games"];
-  const rows = sorted.value
-    .map((r, idx) => ({
-      rank: idx + 1,
-      name: r.name,
-      rate: r.rate,
-      games: r.games,
-    }))
-    .slice(0, 500);
-  downloadCsv("paiviz_rankings.csv", rows, header, {
-    rank: "#",
-    name: "名前",
-    rate: "Rate",
-    games: "対局数",
-  });
-  pushToast("CSVをダウンロードしました", "success");
-};
+function exportCsv() {
+  const rows = sorted.value.map((r, idx) => ({
+    rank: idx + 1,
+    name: r.name,
+    rate: r.rate,
+    games: r.games,
+  }));
+  const csv = toCsv(rows, [
+    { key: "rank", label: "#" },
+    { key: "name", label: "名前" },
+    { key: "rate", label: "Rate" },
+    { key: "games", label: "対局数" },
+  ]);
+  const q = model.value;
+  const ymd = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  downloadCsv(
+    `paiviz_rankings_${ymd}_${q.mode}_${q.tableType}_${q.rule}.csv`,
+    csv,
+  );
+  pushToast("CSVをダウンロードしました");
+}
 </script>
