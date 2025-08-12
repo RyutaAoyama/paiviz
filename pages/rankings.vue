@@ -1,8 +1,92 @@
+<template>
+  <section class="space-y-4">
+    <h1 class="text-2xl font-bold">ランキング</h1>
+
+    <div class="flex items-center gap-2">
+      <button
+        class="rounded-lg bg-[#0F1115] px-3 py-2 text-sm ring-1 ring-[#242A33]"
+        @click="exportCsv"
+      >
+        CSVエクスポート
+      </button>
+      <button class="rounded-lg bg-[#0F1115] px-3 py-2 text-sm ring-1 ring-[#242A33]">
+        共有リンク作成
+      </button>
+      <div class="ml-auto text-xs text-gray-400">表示: {{ filtered.length }} 件</div>
+    </div>
+
+    <div v-if="loading" class="space-y-2">
+      <div v-for="i in 5" :key="i" class="h-10 animate-pulse rounded bg-[#161A20]"></div>
+    </div>
+
+    <div v-else-if="!filtered.length" class="space-y-4 text-center">
+      <p class="text-sm text-gray-400">ランキングが見つかりません</p>
+      <div class="flex justify-center gap-2">
+        <button class="rounded-lg bg-teal-600 px-3 py-2 text-sm text-white" @click="jumpThis">
+          今月
+        </button>
+        <button class="rounded-lg bg-teal-600 px-3 py-2 text-sm text-white" @click="jumpLast30">
+          直近30日
+        </button>
+      </div>
+    </div>
+
+    <VirtualTable
+      v-else
+      :rows="filtered"
+      :columns="columns"
+      :height="520"
+      :row-height="44"
+      key-field="name"
+      :sort-key="model.sortKey"
+      :sort-dir="model.sortDir"
+      @enter="(row: Row) => navigateTo(`/player/${encodeURIComponent(row.name)}`)"
+    />
+  </section>
+</template>
 <script setup lang="ts">
 import { h, ref, onMounted, watch, resolveComponent, computed } from 'vue';
 import { getRankingRows, type RankingRow } from '~/providers/rankings';
 import type { Model, TableType, Rule } from '~/types/rankings';
+// CSV
+import { toCsv, downloadCsv } from '~/utils/csv';
+const exportCsv = (): void => {
+  const csv = toCsv(filtered.value, [
+    { key: 'name', label: '名前' },
+    { key: 'rate', label: 'Rate' },
+    { key: 'games', label: '対局数' },
+    { key: 'tableType', label: '卓' },
+    { key: 'rule', label: 'ルール' },
+  ]);
+  const q = model.value;
+  const ymd = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  downloadCsv(`paiviz_rankings_${ymd}_${q.mode}_${q.tableType}_${q.rule}.csv`, csv);
+};
 
+// 空状態ショートカット
+const jumpThis = (): void => {
+  model.value.mode = 'this';
+  syncToUrl();
+};
+const jumpLast30 = (): void => {
+  model.value.mode = 'last30d';
+  syncToUrl();
+};
+
+// 列定義（rankは行内 index を使う実装なので見た目だけのヘッダ）
+const columns = [
+  {
+    key: 'fav',
+    label: '',
+    width: '72px',
+    render: (p: { row: { name: string } }) =>
+      h('div', { class: 'text-xs' }, h(FavStar, { name: p.row.name })),
+  },
+  { key: 'rank', label: '#', width: '64px' },
+  { key: 'name', label: '名前', width: '1fr' },
+  { key: 'rate', label: 'Rate', width: '120px' },
+  { key: 'games', label: '対局数', width: '120px' },
+];
 const { model, syncToUrl } = useRankingQuery();
 const url = useRequestURL();
 
@@ -83,99 +167,32 @@ const recalc = async (): Promise<void> => {
 
 onMounted(() => {
   void recalc();
+  console.log('columns:', columns);
+  console.log('filtered:', filtered.value);
 });
 watch(
   model,
   () => {
     void recalc();
+    console.log('model changed:', model.value);
   },
   { deep: true }
 );
 
-// CSV
-import { toCsv, downloadCsv } from '~/utils/csv';
-const exportCsv = (): void => {
-  const csv = toCsv(filtered.value, [
-    { key: 'name', label: '名前' },
-    { key: 'rate', label: 'Rate' },
-    { key: 'games', label: '対局数' },
-    { key: 'tableType', label: '卓' },
-    { key: 'rule', label: 'ルール' },
-  ]);
-  const q = model.value;
-  const ymd = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  downloadCsv(`paiviz_rankings_${ymd}_${q.mode}_${q.tableType}_${q.rule}.csv`, csv);
-};
-
-// 空状態ショートカット
-const jumpThis = (): void => {
-  model.value.mode = 'this';
-  syncToUrl();
-};
-const jumpLast30 = (): void => {
-  model.value.mode = 'last30d';
-  syncToUrl();
-};
-
-// 列定義（rankは行内 index を使う実装なので見た目だけのヘッダ）
-const columns = [
-  {
-    key: 'fav',
-    label: '',
-    width: '72px',
-    render: (p: { row: { name: string } }) =>
-      h('div', { class: 'text-xs' }, h(FavStar, { name: p.row.name })),
+// filteredの内容を監視
+watch(
+  filtered,
+  (val) => {
+    console.log('filtered changed:', val);
   },
-  { key: 'rank', label: '#', width: '64px' },
-  { key: 'name', label: '名前', width: '1fr' },
-  { key: 'rate', label: 'Rate', width: '120px' },
-  { key: 'games', label: '対局数', width: '120px' },
-];
+  { immediate: true }
+);
+
+// VirtualTableに渡すpropsを確認
+watchEffect(() => {
+  console.log('VirtualTable rows:', filtered.value);
+  console.log('VirtualTable columns:', columns);
+  console.log('VirtualTable sortKey:', model.value.sortKey);
+  console.log('VirtualTable sortDir:', model.value.sortDir);
+});
 </script>
-
-<template>
-  <section class="space-y-4">
-    <h1 class="text-2xl font-bold">ランキング</h1>
-
-    <div class="flex items-center gap-2">
-      <button
-        class="rounded-lg bg-[#0F1115] px-3 py-2 text-sm ring-1 ring-[#242A33]"
-        @click="exportCsv"
-      >
-        CSVエクスポート
-      </button>
-      <button class="rounded-lg bg-[#0F1115] px-3 py-2 text-sm ring-1 ring-[#242A33]">
-        共有リンク作成
-      </button>
-      <div class="ml-auto text-xs text-gray-400">表示: {{ filtered.length }} 件</div>
-    </div>
-
-    <div v-if="loading" class="space-y-2">
-      <div v-for="i in 5" :key="i" class="h-10 animate-pulse rounded bg-[#161A20]"></div>
-    </div>
-
-    <div v-else-if="!filtered.length" class="space-y-4 text-center">
-      <p class="text-sm text-gray-400">ランキングが見つかりません</p>
-      <div class="flex justify-center gap-2">
-        <button class="rounded-lg bg-teal-600 px-3 py-2 text-sm text-white" @click="jumpThis">
-          今月
-        </button>
-        <button class="rounded-lg bg-teal-600 px-3 py-2 text-sm text-white" @click="jumpLast30">
-          直近30日
-        </button>
-      </div>
-    </div>
-
-    <VirtualTable
-      v-else
-      :rows="filtered"
-      :columns="columns"
-      :height="520"
-      :row-height="44"
-      key-field="name"
-      :sort-key="model.sortKey"
-      :sort-dir="model.sortDir"
-      @enter="(row: Row) => navigateTo(`/player/${encodeURIComponent(row.name)}`)"
-    />
-  </section>
-</template>

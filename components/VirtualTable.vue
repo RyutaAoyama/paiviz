@@ -32,8 +32,11 @@
       <!-- 全体高（スクロール用ダミー） -->
       <div :style="{ height: totalHeight + 'px' }"></div>
 
-      <!-- 可視領域 -->
-      <div class="absolute left-0 right-0" :style="{ transform: `translateY(${offsetY}px)` }">
+      <!-- 可視領域：必ず前面へ -->
+      <div
+        class="absolute left-0 right-0 top-0 z-10"
+        :style="{ transform: `translateY(${offsetY}px)` }"
+      >
         <div
           v-for="(row, i) in visibleRows"
           :key="row[keyField] ?? i"
@@ -44,7 +47,13 @@
           data-row
         >
           <div v-for="c in columns" :key="c.key" class="px-3">
-            <component :is="c.render ?? 'span'" v-bind="buildCellProps(row, c)">
+            <component
+              :is="c.render ?? 'span'"
+              :row="row"
+              :col="c"
+              :value="row[c.key]"
+              :index="start + i"
+            >
               {{ row[c.key] }}
             </component>
           </div>
@@ -72,7 +81,6 @@ const props = defineProps<{
   sortDir?: 'asc' | 'desc';
 }>();
 
-// 数値キャスト（リアクティブ）
 const rowH = computed(() => {
   const n = Number(props.rowHeight ?? 44);
   return Number.isFinite(n) && n > 0 ? n : 44;
@@ -88,7 +96,7 @@ const sortDir = computed(() => props.sortDir ?? 'desc');
 const viewport = ref<HTMLElement | null>(null);
 const start = ref(0);
 const end = ref(0);
-const buffer = 6; // 先読み
+const buffer = 6;
 const active = ref(0);
 
 const colTemplate = computed(() => (props.columns ?? []).map((c) => c.width ?? '1fr').join(' '));
@@ -110,7 +118,6 @@ const clamp = (): void => {
 };
 
 const reset = (): void => {
-  // ★ rows更新時に初期位置へ戻す（今回の主因）
   if (viewport.value) viewport.value.scrollTop = 0;
   start.value = 0;
   end.value = Math.min(props.rows?.length ?? 0, page.value + buffer);
@@ -119,35 +126,28 @@ const reset = (): void => {
 const onScroll = (): void => clamp();
 
 onMounted(() => {
-  reset(); // 初回は確実に0行目から
+  reset();
   nextTick(() => clamp());
   window.addEventListener('resize', clamp);
 });
 onBeforeUnmount(() => window.removeEventListener('resize', clamp));
 
-// ★ rows が変わるたびに reset -> clamp
 watch(
   () => props.rows,
   () => {
-    // 新しい配列が来たら先頭から描画
     reset();
     nextTick(() => clamp());
   },
   { deep: false }
 );
 
-// 行高/高さの変化にも追従
 watch([rowH, vh], () => nextTick(() => clamp()));
 
 const offsetY = computed(() => start.value * rowH.value);
 const visibleRows = computed(() => props.rows?.slice(start.value, end.value) ?? []);
 
-const buildCellProps = (row: any, c: Col) => ({ row, value: row[c.key], col: c });
-
-// 公開メソッド
 defineExpose({ getVisible: () => visibleRows.value, reset });
 
-// キーボード操作
 const emit = defineEmits<{ (e: 'enter', row: any): void }>();
 const scrollToActive = (): void => {
   const v = viewport.value;
